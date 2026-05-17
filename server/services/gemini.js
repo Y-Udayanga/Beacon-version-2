@@ -9,16 +9,30 @@ if (!GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY || 'missing');
 
 /**
- * Ordered list of models to try. If one hits a quota limit, we fall through
- * to the next. Each model has its own separate quota bucket.
- * Verified against models.list endpoint May 2026.
+ * Models ordered by current availability. Put working models first.
+ * When a model returns 429 it is marked dead for 60s so subsequent
+ * requests skip it instantly instead of wasting time.
  */
 const MODEL_CASCADE = [
+  'gemini-3.1-flash-lite',   // Currently has quota
+  'gemini-2.5-flash-lite',   // Separate quota bucket
   'gemini-2.5-flash',        // Best quality
-  'gemini-2.5-flash-lite',   // Lighter, separate quota
-  'gemini-3.1-flash-lite',   // Newest, separate quota
-  'gemini-2.0-flash-lite',   // Legacy fallback, separate quota
+  'gemini-2.0-flash-lite',   // Legacy fallback
 ];
+
+/** Track which models are 429'd so we skip them instantly. */
+const deadModels = new Map(); // modelName → timestamp when it was marked dead
+
+function isModelDead(name) {
+  const deadAt = deadModels.get(name);
+  if (!deadAt) return false;
+  // Revive after 60 seconds
+  if (Date.now() - deadAt > 60_000) {
+    deadModels.delete(name);
+    return false;
+  }
+  return true;
+}
 
 /**
  * Strip markdown code fences from a string and parse as JSON.
@@ -30,8 +44,7 @@ function parseJsonResponse(text) {
 }
 
 /**
- * Wrap a promise with a timeout so it doesn't hang forever.
- * IMPORTANT: Catches the dangling promise rejection after timeout to prevent
+ * Wrap a promise with a timeout. Catches dangling rejections to prevent
  * unhandled rejection crashes.
  */
 function withTimeout(promise, ms, label = 'operation') {
@@ -43,7 +56,6 @@ function withTimeout(promise, ms, label = 'operation') {
     }, ms),
   );
 
-  // Swallow the dangling rejection so it doesn't crash the process
   const safePromise = promise.then(
     (v) => { settled = true; return v; },
     (e) => { settled = true; throw e; },
@@ -52,63 +64,47 @@ function withTimeout(promise, ms, label = 'operation') {
   return Promise.race([safePromise, timer]);
 }
 
-/**
- * Sleep utility for retry backoff.
- */
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Try to generate content, retrying on 429 errors with exponential backoff,
- * and falling through the model cascade when a model's quota is fully exhausted.
+ * Try to generate content, falling through the model cascade.
+ * 429'd models are skipped instantly for 60s after first failure.
+ * timeoutMs can be increased for requests with large audio payloads.
  */
-async function generateWithRetry(contents, systemInstruction, maxRetries = 1) {
+async function generateWithRetry(contents, systemInstruction, timeoutMs = 25_000) {
   for (const modelName of MODEL_CASCADE) {
+    // Skip models we already know are 429'd
+    if (isModelDead(modelName)) {
+      continue;
+    }
+
     const model = genAI.getGenerativeModel({ model: modelName });
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[gemini] Trying ${modelName} (attempt ${attempt + 1})…`);
+    try {
+      console.log(`[gemini] Trying ${modelName}…`);
 
-        const result = await withTimeout(
-          model.generateContent({ contents, systemInstruction }),
-          15_000, // 15s per attempt — keeps total cascade under 60s
-          `${modelName} generateContent`,
-        );
+      const result = await withTimeout(
+        model.generateContent({ contents, systemInstruction }),
+        timeoutMs,
+        `${modelName}`,
+      );
 
-        console.log(`[gemini] ✓ ${modelName} responded successfully`);
-        return result;
-      } catch (err) {
-        const is429 = err.message?.includes('429') || err.message?.includes('quota');
-        const isTimeout = err.message?.includes('timed out');
-        const isTransient = err.message?.includes('fetch failed')
-          || err.message?.includes('503')
-          || err.message?.includes('ECONNREFUSED')
-          || err.message?.includes('network')
-          || err.message?.includes('Service Unavailable');
+      console.log(`[gemini] ✓ ${modelName} responded`);
+      return result;
+    } catch (err) {
+      const msg = err.message || '';
+      const is429 = msg.includes('429') || msg.includes('quota');
 
-        if (is429 && attempt < maxRetries) {
-          const delay = 1000; // 1s fixed backoff
-          console.warn(`[gemini] ${modelName} rate-limited, retrying in ${delay}ms…`);
-          await sleep(delay);
-          continue;
-        }
-
-        if (is429) {
-          // Quota exhausted for this model — try the next one
-          console.warn(`[gemini] ${modelName} quota exhausted, trying next model…`);
-          break;
-        }
-
-        if (isTimeout || isTransient) {
-          console.error(`[gemini] ${modelName} failed: ${err.message?.slice(0, 80)}`);
-          // Try next model
-          break;
-        }
-
-        // Truly unknown error — still try next model instead of crashing
-        console.error(`[gemini] ${modelName} unexpected error: ${err.message?.slice(0, 80)}`);
-        break;
+      if (is429) {
+        // Mark dead for 60s so we don't waste time on it again
+        deadModels.set(modelName, Date.now());
+        console.warn(`[gemini] ${modelName} quota exhausted — skipping for 60s`);
+        continue;
       }
+
+      // Any other error (timeout, network, 503) — try next model
+      console.error(`[gemini] ${modelName} failed: ${msg.slice(0, 100)}`);
+      continue;
     }
   }
 
@@ -140,15 +136,8 @@ const PERSON_TAGS_DEFAULTS = {
 
 /**
  * Analyze emergency data and return structured triage information.
- * Accepts image buffer, audio buffer (raw recording), description, and location.
- * Gemini processes the audio natively — no separate speech-to-text needed.
+ * Gemini processes image + audio natively — no separate STT needed.
  * Always returns a valid triage result — never throws.
- *
- * @param {Buffer|null} imageBuffer  — JPEG image from the panic snap
- * @param {Buffer|null} audioBuffer  — Raw audio/video recording (webm/ogg/mp4)
- * @param {string|null} audioMimeType — MIME type of the audio (e.g. 'audio/webm')
- * @param {string|null} description  — Text description from the reporter
- * @param {{lat:number,lng:number}|null} location — GPS coordinates
  */
 export async function triageEmergency(imageBuffer, audioBuffer, audioMimeType, description, location) {
   if (!GEMINI_API_KEY) {
@@ -210,10 +199,10 @@ CRITICAL RULES:
 
     // Attach raw audio recording as inline data — Gemini analyzes it natively
     if (audioBuffer) {
-      // Multer v2 sometimes reports 'text/plain' for webm — infer from context
+      // Fix MIME: Multer sometimes reports 'text/plain' for webm blobs
       let cleanMime = (audioMimeType || 'audio/webm').split(';')[0].trim();
       if (cleanMime === 'text/plain' || cleanMime === 'application/octet-stream') {
-        cleanMime = 'audio/webm'; // Safe default — browser MediaRecorder uses webm
+        cleanMime = 'audio/webm';
       }
       parts.push({
         inlineData: {
@@ -223,8 +212,12 @@ CRITICAL RULES:
       });
     }
 
-    // Attach the text prompt last so Gemini sees media first
+    // Text prompt last so Gemini sees media first
     parts.push({ text: promptParts.join('\n') });
+
+    // Determine timeout: larger payloads (audio) need more time
+    const hasMedia = !!(imageBuffer || audioBuffer);
+    const timeout = hasMedia ? 45_000 : 20_000;
 
     console.log('[gemini] Sending triage request…', {
       hasImage: !!imageBuffer,
@@ -233,11 +226,13 @@ CRITICAL RULES:
       audioSizeKB: audioBuffer ? Math.round(audioBuffer.length / 1024) : 0,
       hasDescription: !!description,
       hasLocation: !!location,
+      timeoutMs: timeout,
     });
 
     const result = await generateWithRetry(
       [{ role: 'user', parts }],
       systemInstruction,
+      timeout,
     );
 
     const response = result.response;
@@ -246,7 +241,7 @@ CRITICAL RULES:
 
     const parsed = parseJsonResponse(text);
 
-    // Validate required fields and fill defaults for any missing ones
+    // Validate & fill defaults
     return {
       severity: typeof parsed.severity === 'number' ? parsed.severity : TRIAGE_DEFAULTS.severity,
       category: parsed.category || TRIAGE_DEFAULTS.category,
@@ -261,7 +256,7 @@ CRITICAL RULES:
     return {
       ...TRIAGE_DEFAULTS,
       recommended_actions: [
-        'AI triage failed — dispatch first responders to assess manually',
+        'AI triage temporarily unavailable — dispatch first responders to assess manually',
       ],
     };
   }
@@ -313,6 +308,7 @@ export async function extractPersonTags(imageBuffer, description) {
     const result = await generateWithRetry(
       [{ role: 'user', parts }],
       systemInstruction,
+      20_000,
     );
 
     const response = result.response;
