@@ -15,6 +15,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
+        timeout: 120_000, // 120s — AI triage cascade can take time
       },
     },
   },

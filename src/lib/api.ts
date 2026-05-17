@@ -1,18 +1,42 @@
 const API_BASE = '/api'
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+/**
+ * Fetch with a timeout to prevent indefinite hangs.
+ */
+function fetchWithTimeout(url: string, options?: RequestInit, timeoutMs = 60_000): Promise<Response> {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeoutMs)
+
+  return fetch(url, { ...options, signal: controller.signal })
+    .catch((err) => {
+      if (err.name === 'AbortError') {
+        throw new Error('Request timed out — the server may be overloaded or unreachable.')
+      }
+      // "Failed to fetch" usually means the backend server isn't running
+      if (err.message === 'Failed to fetch' || err.message?.includes('NetworkError')) {
+        throw new Error(
+          'Cannot reach the server. Make sure the backend is running (npm run dev:server).'
+        )
+      }
+      throw err
+    })
+    .finally(() => clearTimeout(id))
+}
+
+async function request<T>(path: string, options?: RequestInit, timeoutMs = 10_000): Promise<T> {
+  const res = await fetchWithTimeout(`${API_BASE}${path}`, {
     ...options,
     headers: {
       ...options?.headers,
     },
-  })
+  }, timeoutMs)
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Request failed' }))
     throw new Error(error.message || `HTTP ${res.status}`)
   }
   return res.json()
 }
+
 
 export interface EmergencyReport {
   image?: File
@@ -84,17 +108,27 @@ export const api = {
   async submitEmergency(report: EmergencyReport): Promise<TriageResult> {
     const formData = new FormData()
     if (report.image) formData.append('image', report.image)
-    if (report.audio) formData.append('audio', report.audio, 'recording.webm')
+    if (report.audio) {
+      // Convert Blob → File with explicit MIME type so Multer receives the
+      // correct content-type instead of defaulting to 'text/plain'
+      const audioMime = report.audio.type || 'audio/webm'
+      const audioFile = new File([report.audio], 'recording.webm', { type: audioMime })
+      formData.append('audio', audioFile)
+    }
     if (report.description) formData.append('description', report.description)
     if (report.location_lat) formData.append('location_lat', String(report.location_lat))
     if (report.location_lng) formData.append('location_lng', String(report.location_lng))
     if (report.reporter_phone) formData.append('reporter_phone', report.reporter_phone)
 
-    const res = await fetch(`${API_BASE}/emergency/report`, {
-      method: 'POST',
-      body: formData,
-    })
-    if (!res.ok) throw new Error('Failed to submit emergency')
+    const res = await fetchWithTimeout(
+      `${API_BASE}/emergency/report`,
+      { method: 'POST', body: formData },
+      60_000, // 60s — AI analysis + model cascade can take time
+    )
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+      throw new Error(err.message || 'Failed to submit emergency')
+    }
     return res.json()
   },
 

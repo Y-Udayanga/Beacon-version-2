@@ -29,11 +29,15 @@ router.post(
 
       const imageFile = req.file;
 
-      // Upload image to storage
+      // Upload image to storage (non-fatal — continue without it)
       let imageUrl = null;
       if (imageFile) {
-        const filename = `missing-persons/${uuidv4()}-${imageFile.originalname}`;
-        imageUrl = await uploadMedia(imageFile.buffer, filename, imageFile.mimetype);
+        try {
+          const filename = `missing-persons/${uuidv4()}-${imageFile.originalname}`;
+          imageUrl = await uploadMedia(imageFile.buffer, filename, imageFile.mimetype);
+        } catch (err) {
+          console.error('[missing-person] Image upload failed (non-fatal):', err.message);
+        }
       }
 
       // Extract identifying tags from the image via AI
@@ -42,29 +46,37 @@ router.post(
         description || clothing_description || '',
       );
 
-      // Save to database
-      const record = await createMissingPerson({
-        id: uuidv4(),
-        name: name || '',
-        estimated_age: estimated_age || extractedTags.estimated_age,
-        gender: gender || extractedTags.gender,
-        description: description || '',
-        clothing_description: clothing_description || '',
-        last_seen_location: last_seen_location || '',
-        last_seen_time: last_seen_time || null,
-        image_url: imageUrl,
-        reporter_name: reporter_name || '',
-        reporter_contact: reporter_contact || '',
-        extracted_tags: extractedTags,
-        status: 'active',
-      });
+      // Save to database (non-fatal — return AI results regardless)
+      let record = null;
+      const recordId = uuidv4();
+      try {
+        record = await createMissingPerson({
+          id: recordId,
+          name: name || '',
+          estimated_age: estimated_age || extractedTags.estimated_age,
+          gender: gender || extractedTags.gender,
+          description: description || '',
+          clothing_description: clothing_description || '',
+          last_seen_location: last_seen_location || '',
+          last_seen_time: last_seen_time || null,
+          image_url: imageUrl,
+          reporter_name: reporter_name || '',
+          reporter_contact: reporter_contact || '',
+          extracted_tags: extractedTags,
+          status: 'active',
+        });
+      } catch (dbErr) {
+        console.error('[missing-person] DB save failed (non-fatal):', dbErr.message);
+        record = { id: recordId };
+      }
 
       res.json({
-        id: record.id,
+        id: record.id || recordId,
         extracted_tags: extractedTags,
         ...record,
       });
     } catch (err) {
+      console.error('[missing-person] FATAL:', err.message);
       next(err);
     }
   },

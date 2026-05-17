@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:server": "node server/index.js",
+    "dev:all": "start /b node server/index.js & vite",
     "server": "node server/index.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

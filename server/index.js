@@ -2,6 +2,17 @@
 // so that process.env is populated before any other module reads it.
 import './config/env.js';
 
+// Prevent server crashes from unhandled promise rejections (e.g. dangling
+// Gemini API calls that reject after a timeout race). Log but keep running.
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] Unhandled promise rejection (non-fatal):', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[server] Uncaught exception:', err.message);
+  // Only exit on truly fatal errors, not network/API errors
+  if (err.code === 'ERR_INTERNAL_ASSERTION') process.exit(1);
+});
+
 import express from 'express';
 import cors from 'cors';
 

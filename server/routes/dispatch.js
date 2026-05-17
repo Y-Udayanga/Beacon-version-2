@@ -24,27 +24,45 @@ router.post('/', async (req, res, next) => {
 
     const eta = Math.floor(Math.random() * 11) + 5;
 
-    const unit = await createDispatchedUnit({
-      id: uuidv4(),
-      emergency_id,
-      unit_type,
-      status: 'dispatched',
-      eta_minutes: eta,
-    });
+    // Create dispatched unit record (non-fatal — return synthetic data on failure)
+    let unit = null;
+    const unitId = uuidv4();
+    try {
+      unit = await createDispatchedUnit({
+        id: unitId,
+        emergency_id,
+        unit_type,
+        status: 'dispatched',
+        eta_minutes: eta,
+      });
+    } catch (err) {
+      console.error('[dispatch] createDispatchedUnit failed (non-fatal):', err.message);
+      unit = { id: unitId, emergency_id, unit_type, status: 'dispatched', eta_minutes: eta };
+    }
 
-    await createDispatchLog({
-      id: uuidv4(),
-      emergency_id,
-      action: `Manually dispatched ${unit_type}`,
-      performed_by: 'dispatcher',
-      details: { unit_type, eta_minutes: eta },
-    });
+    // Log the dispatch action (non-fatal)
+    try {
+      await createDispatchLog({
+        id: uuidv4(),
+        emergency_id,
+        action: `Manually dispatched ${unit_type}`,
+        performed_by: 'dispatcher',
+        details: { unit_type, eta_minutes: eta },
+      });
+    } catch (err) {
+      console.error('[dispatch] createDispatchLog failed (non-fatal):', err.message);
+    }
 
-    // Mark the emergency as dispatched
-    await updateEmergency(emergency_id, { status: 'dispatched' });
+    // Mark the emergency as dispatched (non-fatal)
+    try {
+      await updateEmergency(emergency_id, { status: 'dispatched' });
+    } catch (err) {
+      console.error('[dispatch] updateEmergency failed (non-fatal):', err.message);
+    }
 
     res.json(unit);
   } catch (err) {
+    console.error('[dispatch] FATAL:', err.message);
     next(err);
   }
 });

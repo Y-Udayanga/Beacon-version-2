@@ -1,49 +1,40 @@
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
-import type { Emergency } from '@/lib/api'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { api, type Emergency } from '@/lib/api'
 
+/**
+ * Fetch emergencies via the backend API instead of direct Supabase calls.
+ * Polls every 5 seconds for near-realtime updates.
+ * Falls back gracefully if the backend is unreachable.
+ */
 export function useEmergencies() {
   const [emergencies, setEmergencies] = useState<Emergency[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchEmergencies = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('emergencies')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (!error && data) {
-      setEmergencies(data as Emergency[])
+    try {
+      const data = await api.getEmergencies()
+      setEmergencies(data)
+      setError(null)
+    } catch (err) {
+      console.warn('[useEmergencies] fetch failed:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load emergencies')
+      // Keep existing data on error — don't clear
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [])
 
   useEffect(() => {
+    // Initial fetch
     fetchEmergencies()
 
-    const channel = supabase
-      .channel('emergencies-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'emergencies' },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setEmergencies(prev => [payload.new as Emergency, ...prev])
-          } else if (payload.eventType === 'UPDATE') {
-            setEmergencies(prev =>
-              prev.map(e => e.id === (payload.new as Emergency).id ? payload.new as Emergency : e)
-            )
-          } else if (payload.eventType === 'DELETE') {
-            setEmergencies(prev =>
-              prev.filter(e => e.id !== (payload.old as Emergency).id)
-            )
-          }
-        }
-      )
-      .subscribe()
+    // Poll every 5 seconds for near-realtime updates
+    pollRef.current = setInterval(fetchEmergencies, 5000)
 
     return () => {
-      supabase.removeChannel(channel)
+      if (pollRef.current) clearInterval(pollRef.current)
     }
   }, [fetchEmergencies])
 
@@ -54,5 +45,5 @@ export function useEmergencies() {
     resolved: emergencies.filter(e => e.status === 'resolved'),
   }
 
-  return { emergencies, grouped, loading, refetch: fetchEmergencies }
+  return { emergencies, grouped, loading, error, refetch: fetchEmergencies }
 }

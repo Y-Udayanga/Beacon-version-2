@@ -14,10 +14,11 @@ import {
   ShieldCheck,
   Truck,
   LifeBuoy,
+  ExternalLink,
 } from 'lucide-react'
 import type { Emergency } from '@/lib/api'
 import { api } from '@/lib/api'
-import { cn, severityColor, severityLabel, timeAgo } from '@/lib/utils'
+import { cn, severityColor, severityLabel, timeAgo, googleMapsUrl } from '@/lib/utils'
 
 interface TicketDetailPanelProps {
   emergency: Emergency
@@ -309,13 +310,13 @@ export default function TicketDetailPanel({
           </div>
         </div>
 
-        {/* Location */}
+        {/* Location — clickable Google Maps */}
         <div>
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Location
           </h3>
           <div className="rounded-lg bg-muted border border-border p-4">
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2 mb-3">
               <MapPin size={16} className="text-primary mt-0.5 flex-shrink-0" />
               <div className="text-sm">
                 {emergency.location_address && (
@@ -326,6 +327,23 @@ export default function TicketDetailPanel({
                 </p>
               </div>
             </div>
+            {googleMapsUrl(emergency.location_lat, emergency.location_lng) && (
+              <a
+                href={googleMapsUrl(emergency.location_lat, emergency.location_lng)!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg',
+                  'bg-primary/15 border border-primary/30',
+                  'text-primary text-sm font-medium',
+                  'hover:bg-primary/25 transition-colors group'
+                )}
+              >
+                <MapPin size={14} />
+                View on Google Maps
+                <ExternalLink size={12} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+              </a>
+            )}
           </div>
         </div>
 

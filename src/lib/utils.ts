@@ -47,3 +47,12 @@ export function categoryIcon(category: string): string {
   }
   return icons[category] || "AlertTriangle"
 }
+
+/**
+ * Build a Google Maps URL from latitude and longitude.
+ * Returns null if either coordinate is missing.
+ */
+export function googleMapsUrl(lat: number | null | undefined, lng: number | null | undefined): string | null {
+  if (lat == null || lng == null) return null
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+}

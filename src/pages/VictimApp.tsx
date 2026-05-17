@@ -16,11 +16,12 @@ import {
   Languages,
   RotateCcw,
   UserSearch,
+  ExternalLink,
 } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useMediaCapture } from "@/hooks/useMediaCapture";
 import { api, type TriageResult } from "@/lib/api";
-import { cn, severityColor, severityLabel } from "@/lib/utils";
+import { cn, severityColor, severityLabel, googleMapsUrl } from "@/lib/utils";
 
 type AppState = "ready" | "capturing" | "analyzing" | "results";
 
@@ -98,8 +99,15 @@ export default function VictimApp() {
 
   const handlePanicSnap = useCallback(async () => {
     setSubmitError(null);
-    await media.startCapture();
-    setAppState("capturing");
+    try {
+      await media.startCapture();
+      setAppState("capturing");
+    } catch (err) {
+      // Camera/mic denied or unavailable — fall back to text-only mode
+      setSubmitError(
+        "Camera/mic access denied. Use 'Quick Report' below to submit with text only."
+      );
+    }
   }, [media]);
 
   const handleStopAndSubmit = useCallback(async () => {
@@ -124,6 +132,33 @@ export default function VictimApp() {
       setAppState("ready");
     }
   }, [media, description, geo.latitude, geo.longitude]);
+
+  /**
+   * Submit a text-only emergency report without needing camera or microphone.
+   * This is the fallback for devices/browsers where media access fails.
+   */
+  const handleQuickReport = useCallback(async () => {
+    if (!description.trim()) {
+      setSubmitError("Please describe your emergency before submitting.");
+      return;
+    }
+    setSubmitError(null);
+    setAppState("analyzing");
+    try {
+      const triageResult = await api.submitEmergency({
+        description,
+        location_lat: geo.latitude ?? undefined,
+        location_lng: geo.longitude ?? undefined,
+      });
+      setResult(triageResult);
+      setAppState("results");
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Failed to submit emergency"
+      );
+      setAppState("ready");
+    }
+  }, [description, geo.latitude, geo.longitude]);
 
   const handleReset = useCallback(() => {
     media.reset();
@@ -151,7 +186,7 @@ export default function VictimApp() {
         <div className="w-5" />
       </header>
 
-      {/* Location indicator */}
+      {/* Location indicator — clickable to open Google Maps */}
       <div className="relative z-10 flex items-center justify-center gap-2 px-4 py-2 text-xs">
         <MapPin className="w-3.5 h-3.5 text-primary" />
         {geo.loading ? (
@@ -161,9 +196,15 @@ export default function VictimApp() {
         ) : geo.error ? (
           <span className="text-destructive">{geo.error}</span>
         ) : (
-          <span className="text-muted-foreground">
+          <a
+            href={googleMapsUrl(geo.latitude, geo.longitude) || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-primary hover:text-primary/80 underline underline-offset-2 transition-colors"
+          >
             {geo.latitude?.toFixed(4)}, {geo.longitude?.toFixed(4)}
-          </span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
         )}
       </div>
 
@@ -229,6 +270,22 @@ export default function VictimApp() {
                 )}
               />
             </div>
+
+            {/* Quick Report — text-only fallback */}
+            <motion.button
+              onClick={handleQuickReport}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={cn(
+                "w-full max-w-sm mb-6 px-5 py-3 rounded-xl text-sm font-medium",
+                "bg-primary/15 border border-primary/30 text-primary",
+                "hover:bg-primary/25 transition-all",
+                "flex items-center justify-center gap-2"
+              )}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Quick Report (Text Only)
+            </motion.button>
 
             {/* Missing person link */}
             <Link
@@ -491,6 +548,38 @@ export default function VictimApp() {
                     })}
                   </div>
                 )}
+
+              {/* Your Location — clickable Google Maps */}
+              {geo.latitude != null && geo.longitude != null && (
+                <div className="glass rounded-xl px-4 py-3">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                    Your Location
+                  </p>
+                  <a
+                    href={googleMapsUrl(geo.latitude, geo.longitude) || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-lg",
+                      "bg-primary/10 border border-primary/30",
+                      "hover:bg-primary/20 transition-colors group"
+                    )}
+                  >
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/15">
+                      <MapPin className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-foreground font-medium">
+                        Open in Google Maps
+                      </p>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {geo.latitude.toFixed(6)}, {geo.longitude.toFixed(6)}
+                      </p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-primary/60 group-hover:text-primary transition-colors" />
+                  </a>
+                </div>
+              )}
 
               {/* Reset button */}
               <div className="pt-4 flex justify-center">
