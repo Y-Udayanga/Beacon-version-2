@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://beacon-version-2.vercel.app/',
         changeOrigin: true,
         timeout: 120_000, // 120s — AI triage cascade can take time
       },
