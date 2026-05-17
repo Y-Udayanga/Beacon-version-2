@@ -47,6 +47,10 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Crisis Copilot server running on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production' || process.env.RENDER || process.env.PORT) {
+  app.listen(PORT, () => {
+    console.log(`Crisis Copilot server running on port ${PORT}`);
+  });
+}
+
+export default app;
