@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Radio, Bell, Clock, Search, Filter, UserSearch } from 'lucide-react'
+import { ArrowLeft, Radio, Bell, Clock, Search, Filter, UserSearch, Map as MapIcon, LayoutPanelLeft } from 'lucide-react'
 import { useEmergencies } from '@/hooks/useEmergencies'
 import type { Emergency } from '@/lib/api'
 import { cn, timeAgo } from '@/lib/utils'
@@ -9,6 +9,7 @@ import StatsBar from '@/components/dispatcher/StatsBar'
 import TicketCard from '@/components/dispatcher/TicketCard'
 import TicketDetailPanel from '@/components/dispatcher/TicketDetailPanel'
 import ActivityFeed from '@/components/dispatcher/ActivityFeed'
+import MapView from '@/components/dispatcher/MapView'
 
 interface KanbanColumnProps {
   title: string
@@ -57,6 +58,7 @@ export default function DispatcherDashboard() {
   const [selectedEmergency, setSelectedEmergency] = useState<Emergency | null>(null)
   const [showActivity, setShowActivity] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [viewMode, setViewMode] = useState<'kanban' | 'map'>('kanban')
   const [currentTime, setCurrentTime] = useState(new Date())
 
   // Update clock every second
@@ -160,6 +162,30 @@ export default function DispatcherDashboard() {
           />
         </div>
 
+        {/* View Toggle */}
+        <div className="flex bg-muted rounded-lg p-1 border border-border">
+          <button
+            onClick={() => setViewMode('kanban')}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+              viewMode === 'kanban' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <LayoutPanelLeft size={14} />
+            Kanban
+          </button>
+          <button
+            onClick={() => setViewMode('map')}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+              viewMode === 'map' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <MapIcon size={14} />
+            Map
+          </button>
+        </div>
+
         {/* Action buttons */}
         <button
           onClick={() => setShowActivity(!showActivity)}
@@ -195,6 +221,11 @@ export default function DispatcherDashboard() {
                 className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
               />
             </div>
+          ) : viewMode === 'map' ? (
+            <MapView
+              emergencies={searchQuery ? [...filteredColumns.flatMap(c => c.data)] : emergencies}
+              onCardClick={setSelectedEmergency}
+            />
           ) : (
             <div className="flex gap-4 h-full overflow-x-auto scrollbar-hide pb-2">
               {filteredColumns.map(col => (
