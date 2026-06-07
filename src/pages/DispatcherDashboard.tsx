@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Radio, Bell, Clock, Search, Filter, UserSearch, Map as MapIcon, LayoutPanelLeft } from 'lucide-react'
+import { ArrowLeft, Radio, Bell, Clock, Search, Filter, UserSearch, Map as MapIcon, LayoutPanelLeft, Users, LogOut } from 'lucide-react'
 import { useEmergencies } from '@/hooks/useEmergencies'
+import { useAuth } from '@/lib/AuthContext'
 import type { Emergency } from '@/lib/api'
 import { cn, timeAgo } from '@/lib/utils'
 import StatsBar from '@/components/dispatcher/StatsBar'
@@ -55,11 +56,18 @@ function KanbanColumn({ title, color, emergencies, onCardClick }: KanbanColumnPr
 
 export default function DispatcherDashboard() {
   const { emergencies, grouped, loading, refetch } = useEmergencies()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [selectedEmergency, setSelectedEmergency] = useState<Emergency | null>(null)
   const [showActivity, setShowActivity] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'kanban' | 'map'>('kanban')
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/login', { replace: true })
+  }
 
   // Update clock every second
   useEffect(() => {
@@ -139,6 +147,23 @@ export default function DispatcherDashboard() {
               <Radio size={14} />
               Live
             </div>
+
+            {/* Role badge + sign out */}
+            {user && (
+              <>
+                <span className="hidden lg:inline-flex px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] font-medium">
+                  Dispatcher
+                </span>
+                <button
+                  onClick={handleSignOut}
+                  title="Sign out"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground text-xs hover:text-foreground transition-colors"
+                >
+                  <LogOut size={14} />
+                  <span className="hidden sm:inline">Sign out</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -201,11 +226,19 @@ export default function DispatcherDashboard() {
         </button>
 
         <Link
-          to="/missing"
+          to="/missing-dashboard"
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm hover:bg-amber-500/20 transition-all"
         >
           <UserSearch size={14} />
           Missing Persons
+        </Link>
+
+        <Link
+          to="/volunteers"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-muted-foreground text-sm hover:text-foreground transition-all"
+        >
+          <Users size={14} />
+          Volunteers
         </Link>
       </div>
 

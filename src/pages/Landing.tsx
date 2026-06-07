@@ -555,6 +555,13 @@ export default function Landing() {
                 <LayoutDashboard className="h-5 w-5" />
                 Dispatcher Dashboard
               </Link>
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-secondary transition-all"
+              >
+                <Users className="h-5 w-5" />
+                Volunteer / Sign In
+              </Link>
             </div>
           </motion.div>
         </div>
@@ -571,7 +578,8 @@ export default function Landing() {
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link to="/victim" className="hover:text-foreground transition-colors">Victim App</Link>
               <Link to="/dispatcher" className="hover:text-foreground transition-colors">Dashboard</Link>
-              <Link to="/missing" className="hover:text-foreground transition-colors">Missing Persons</Link>
+              <Link to="/missing-dashboard" className="hover:text-foreground transition-colors">Missing Persons</Link>
+              <Link to="/login" className="hover:text-foreground transition-colors">Sign In</Link>
             </div>
             <p className="text-sm text-muted-foreground">
               Built for emergencies. Powered by AI.

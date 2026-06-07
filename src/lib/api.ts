@@ -105,6 +105,31 @@ export interface ExtractedTags {
   build: string
 }
 
+export interface MissingPerson {
+  id: string
+  created_at: string
+  status: string
+  name: string
+  estimated_age: string
+  gender: string
+  description: string
+  clothing_description: string
+  last_seen_location: string
+  last_seen_time: string
+  image_url: string
+  reporter_name: string
+  reporter_contact: string
+  extracted_tags: ExtractedTags
+}
+
+export interface Volunteer {
+  id: string
+  created_at: string
+  email: string
+  role: string
+  status: string
+}
+
 export const api = {
   async submitEmergency(report: EmergencyReport): Promise<TriageResult> {
     const formData = new FormData()
@@ -140,6 +165,31 @@ export const api = {
 
   async updateEmergency(id: string, data: Partial<Emergency>): Promise<Emergency> {
     return request(`/emergencies/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+  },
+
+  async getMissingPersons(status?: string): Promise<MissingPerson[]> {
+    const params = status ? `?status=${status}` : ''
+    return request(`/missing-person${params}`)
+  },
+
+  async updateMissingPerson(id: string, data: Partial<MissingPerson>): Promise<MissingPerson> {
+    return request(`/missing-person/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+  },
+
+  async getVolunteers(): Promise<Volunteer[]> {
+    return request('/volunteers')
+  },
+
+  async updateVolunteer(id: string, data: Partial<Volunteer>): Promise<Volunteer> {
+    return request(`/volunteers/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),

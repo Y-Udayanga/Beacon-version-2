@@ -20,6 +20,7 @@ import emergencyRouter from './routes/emergency.js';
 import emergenciesRouter from './routes/emergencies.js';
 import missingPersonRouter from './routes/missingPerson.js';
 import dispatchRouter from './routes/dispatch.js';
+import volunteersRouter from './routes/volunteers.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -33,6 +34,7 @@ app.use('/api/emergency', emergencyRouter);
 app.use('/api/emergencies', emergenciesRouter);
 app.use('/api/missing-person', missingPersonRouter);
 app.use('/api/dispatch', dispatchRouter);
+app.use('/api/volunteers', volunteersRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
