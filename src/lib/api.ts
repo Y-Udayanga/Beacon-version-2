@@ -105,6 +105,23 @@ export interface ExtractedTags {
   build: string
 }
 
+export interface MissingPerson {
+  id: string
+  created_at: string
+  status: string
+  name: string
+  estimated_age: string
+  gender: string
+  description: string
+  clothing_description: string
+  last_seen_location: string
+  last_seen_time: string
+  image_url: string
+  reporter_name: string
+  reporter_contact: string
+  extracted_tags: ExtractedTags
+}
+
 export const api = {
   async submitEmergency(report: EmergencyReport): Promise<TriageResult> {
     const formData = new FormData()
@@ -144,6 +161,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
+  },
+
+  async getMissingPersons(status?: string): Promise<MissingPerson[]> {
+    const params = status ? `?status=${status}` : ''
+    return request(`/missing-person${params}`)
   },
 
   async submitMissingPerson(report: MissingPersonReport): Promise<{ id: string; extracted_tags: ExtractedTags }> {
