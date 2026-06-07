@@ -1,15 +1,11 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { lazy, Suspense } from 'react'
-import { AuthProvider } from '@/lib/AuthContext'
-import ProtectedRoute from '@/components/shared/ProtectedRoute'
 
 const Landing = lazy(() => import('./pages/Landing'))
 const VictimApp = lazy(() => import('./pages/VictimApp'))
 const DispatcherDashboard = lazy(() => import('./pages/DispatcherDashboard'))
 const MissingPersonReport = lazy(() => import('./pages/MissingPersonReport'))
-const MissingPersonsDashboard = lazy(() => import('./pages/MissingPersonsDashboard'))
-const Login = lazy(() => import('./pages/Login'))
 
 function LoadingScreen() {
   return (
@@ -26,22 +22,15 @@ export default function App() {
   const location = useLocation()
 
   return (
-    <AuthProvider>
-      <AnimatePresence mode="wait">
-        <Suspense fallback={<LoadingScreen />}>
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<Landing />} />
-            <Route path="/victim" element={<VictimApp />} />
-            <Route path="/missing" element={<MissingPersonReport />} />
-            <Route path="/login" element={<Login />} />
-            
-            <Route element={<ProtectedRoute />}>
-              <Route path="/dispatcher" element={<DispatcherDashboard />} />
-              <Route path="/missing-dashboard" element={<MissingPersonsDashboard />} />
-            </Route>
-          </Routes>
-        </Suspense>
-      </AnimatePresence>
-    </AuthProvider>
+    <AnimatePresence mode="wait">
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Landing />} />
+          <Route path="/victim" element={<VictimApp />} />
+          <Route path="/dispatcher" element={<DispatcherDashboard />} />
+          <Route path="/missing" element={<MissingPersonReport />} />
+        </Routes>
+      </Suspense>
+    </AnimatePresence>
   )
 }

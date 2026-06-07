@@ -78,24 +78,6 @@ export async function getEmergencies(status) {
 }
 
 /**
- * Fetch missing persons.
- */
-export async function getMissingPersons(status) {
-  let query = supabase
-    .from('missing_persons')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (status) {
-    query = query.eq('status', status);
-  }
-
-  const { data, error } = await query;
-  if (error) throw new Error(`Fetch missing persons failed: ${error.message}`);
-  return data;
-}
-
-/**
  * Insert a new missing person record.
  */
 export async function createMissingPerson(data) {

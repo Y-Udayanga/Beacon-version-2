@@ -415,7 +415,7 @@ export default function Landing() {
 
           {/* Dispatcher Login */}
           <motion.div variants={fadeUp}>
-            <Link to="/login" className="block">
+            <Link to="/dispatcher" className="block">
               <motion.div
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
@@ -447,26 +447,18 @@ export default function Landing() {
           </motion.div>
         </motion.div>
 
-        {/* Quick access links */}
+        {/* Missing person quick access */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.5 }}
-          className="mt-8 flex flex-col sm:flex-row items-center gap-4 sm:gap-8"
+          className="mt-8"
         >
-          <Link
-            to="/login"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
-          >
-            <Users className="h-4 w-4" />
-            <span>Join as a Volunteer Responder</span>
-            <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
           <Link
             to="/missing"
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-amber-400 transition-colors group"
           >
-            <Search className="h-4 w-4" />
+            <Users className="h-4 w-4" />
             <span>Report a Missing Person</span>
             <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
           </Link>
@@ -557,11 +549,11 @@ export default function Landing() {
                 Report Emergency
               </Link>
               <Link
-                to="/login"
+                to="/dispatcher"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold hover:from-indigo-600 hover:to-violet-600 transition-all shadow-lg shadow-indigo-500/25"
               >
                 <LayoutDashboard className="h-5 w-5" />
-                Dispatcher Login
+                Dispatcher Dashboard
               </Link>
             </div>
           </motion.div>

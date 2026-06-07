@@ -2,23 +2,9 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { upload } from '../middleware/upload.js';
 import { extractPersonTags } from '../services/gemini.js';
-import { uploadMedia, createMissingPerson, getMissingPersons } from '../services/supabase.js';
+import { uploadMedia, createMissingPerson } from '../services/supabase.js';
 
 const router = Router();
-
-/**
- * GET /api/missing-person
- * Fetch all missing persons
- */
-router.get('/', async (req, res, next) => {
-  try {
-    const status = req.query.status;
-    const data = await getMissingPersons(status);
-    res.json(data);
-  } catch (err) {
-    next(err);
-  }
-});
 
 /**
  * POST /api/missing-person
