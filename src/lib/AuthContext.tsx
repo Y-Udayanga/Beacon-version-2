@@ -46,11 +46,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Profile row may not exist yet immediately after signup, or RLS/network
         // failed. Default to volunteer/active so the user isn't hard-locked out.
         console.warn('[auth] Could not load profile, defaulting to volunteer:', error.message)
+        // #region agent log
+        fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HD', location: 'src/lib/AuthContext.tsx:fetchProfile', message: 'profile fetch ERROR -> defaulting volunteer', data: { userId, error: error.message }, timestamp: Date.now() }) }).catch(() => {})
+        // #endregion
         setRole('volunteer')
         setStatus('active')
         return
       }
 
+      // #region agent log
+      fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HB/HD', location: 'src/lib/AuthContext.tsx:fetchProfile', message: 'profile fetch OK', data: { userId, role: data?.role ?? null, status: data?.status ?? null }, timestamp: Date.now() }) }).catch(() => {})
+      // #endregion
       setRole((data?.role as UserRole) ?? 'volunteer')
       setStatus((data?.status as UserStatus) ?? 'active')
     } catch (err) {

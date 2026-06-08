@@ -1,55 +1,49 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import {
-  AlertTriangle,
   Truck,
-  CheckCircle2,
   Clock,
-  Flame,
-  Heart,
-  Shield,
-  CloudLightning,
+  RefreshCw,
+  Bot,
+  UserCog,
 } from 'lucide-react'
-import type { Emergency } from '@/lib/api'
+import { api, type DispatchLogEntry } from '@/lib/api'
 import { cn, timeAgo, severityColor } from '@/lib/utils'
 
-interface ActivityFeedProps {
-  emergencies: Emergency[]
+function actionConfig(entry: DispatchLogEntry): { icon: React.ReactNode; color: string; bg: string } {
+  const action = entry.action.toLowerCase()
+  if (action.includes('status')) {
+    return { icon: <RefreshCw size={14} />, color: 'text-yellow-400', bg: 'bg-yellow-500/15' }
+  }
+  // dispatch-related (auto or manual)
+  return { icon: <Truck size={14} />, color: 'text-blue-400', bg: 'bg-blue-500/15' }
 }
 
-const categoryIcons: Record<string, React.ReactNode> = {
-  fire: <Flame size={12} />,
-  medical: <Heart size={12} />,
-  crime: <Shield size={12} />,
-  natural_disaster: <CloudLightning size={12} />,
-  other: <AlertTriangle size={12} />,
-}
+export default function ActivityFeed() {
+  const [entries, setEntries] = useState<DispatchLogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-const statusConfig: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
-  new: {
-    icon: <AlertTriangle size={14} />,
-    label: 'New Emergency',
-    color: 'text-red-400',
-  },
-  triaging: {
-    icon: <Clock size={14} />,
-    label: 'Under Triage',
-    color: 'text-yellow-400',
-  },
-  dispatched: {
-    icon: <Truck size={14} />,
-    label: 'Units Dispatched',
-    color: 'text-blue-400',
-  },
-  resolved: {
-    icon: <CheckCircle2 size={14} />,
-    label: 'Resolved',
-    color: 'text-green-400',
-  },
-}
+  const fetchLog = useCallback(async () => {
+    try {
+      const data = await api.getActivityLog()
+      setEntries(data)
+    } catch (err) {
+      console.warn('[ActivityFeed] fetch failed:', err)
+      // Keep existing data on error — don't clear
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-export default function ActivityFeed({ emergencies }: ActivityFeedProps) {
-  // Show the most recent 20 emergencies as activity items
-  const recentActivity = emergencies.slice(0, 20)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch + poll, mirrors useEmergencies
+    fetchLog()
+    pollRef.current = setInterval(fetchLog, 5000)
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [fetchLog])
 
   return (
     <div className="h-full flex flex-col w-80">
@@ -59,35 +53,37 @@ export default function ActivityFeed({ emergencies }: ActivityFeedProps) {
           Activity Feed
         </h2>
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          Real-time emergency updates
+          Dispatches and status changes
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide p-3 space-y-2">
-        {recentActivity.length === 0 ? (
+        {loading && entries.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-8">
+            Loading activity...
+          </p>
+        ) : entries.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-8">
             No recent activity
           </p>
         ) : (
-          recentActivity.map((emergency, i) => {
-            const config = statusConfig[emergency.status] || statusConfig.new
-            const catIcon = categoryIcons[emergency.category] || categoryIcons.other
+          entries.map((entry, i) => {
+            const config = actionConfig(entry)
+            const severity = entry.emergencies?.severity
+            const category = entry.emergencies?.category
 
             return (
               <motion.div
-                key={emergency.id}
+                key={entry.id}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: i * 0.03 }}
+                transition={{ duration: 0.3, delay: Math.min(i * 0.03, 0.3) }}
                 className="flex gap-3 p-2.5 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors group"
               >
-                {/* Status icon */}
+                {/* Action icon */}
                 <div className={cn(
-                  "flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full",
-                  emergency.status === 'new' && 'bg-red-500/15',
-                  emergency.status === 'triaging' && 'bg-yellow-500/15',
-                  emergency.status === 'dispatched' && 'bg-blue-500/15',
-                  emergency.status === 'resolved' && 'bg-green-500/15',
+                  'flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full',
+                  config.bg,
                   config.color
                 )}>
                   {config.icon}
@@ -97,25 +93,29 @@ export default function ActivityFeed({ emergencies }: ActivityFeedProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className={cn('text-xs font-medium', config.color)}>
-                      {config.label}
+                      {entry.action}
                     </span>
-                    <span className={cn(
-                      'inline-flex items-center justify-center w-4 h-4 rounded-full text-[8px] font-bold text-white',
-                      severityColor(emergency.severity)
-                    )}>
-                      {emergency.severity}
-                    </span>
+                    {severity != null && (
+                      <span className={cn(
+                        'inline-flex items-center justify-center w-4 h-4 rounded-full text-[8px] font-bold text-white',
+                        severityColor(severity)
+                      )}>
+                        {severity}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[11px] text-foreground/70 truncate mt-0.5">
-                    {emergency.description || 'No description'}
-                  </p>
+                  {category && (
+                    <p className="text-[11px] text-foreground/70 truncate mt-0.5 capitalize">
+                      {category.replace('_', ' ')}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground capitalize">
-                      {catIcon}
-                      {emergency.category?.replace('_', ' ')}
+                      {entry.performed_by === 'ai' ? <Bot size={10} /> : <UserCog size={10} />}
+                      {entry.performed_by}
                     </span>
                     <span className="text-[10px] text-muted-foreground/60">
-                      {timeAgo(emergency.created_at)}
+                      {timeAgo(entry.created_at)}
                     </span>
                   </div>
                 </div>

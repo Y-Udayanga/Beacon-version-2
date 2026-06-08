@@ -9,19 +9,6 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
-// Admin client for privileged operations (e.g. volunteer management writes to
-// `profiles`). Uses the service-role key when available, otherwise falls back
-// to the anon client (reads still work; writes depend on RLS).
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!serviceRoleKey) {
-  console.warn(
-    '[supabase] SUPABASE_SERVICE_ROLE_KEY missing — volunteer management writes may be blocked by RLS.'
-  );
-}
-const supabaseAdmin = serviceRoleKey
-  ? createClient(supabaseUrl || '', serviceRoleKey)
-  : supabase;
-
 /**
  * Upload a file buffer to the emergency-media storage bucket.
  * Returns the public URL of the uploaded file.
@@ -78,7 +65,7 @@ export async function updateEmergency(id, data) {
 export async function getEmergencies(status) {
   let query = supabase
     .from('emergencies')
-    .select('*')
+    .select('*, dispatched_units(id, unit_type, status, eta_minutes, created_at)')
     .order('created_at', { ascending: false });
 
   if (status) {
@@ -86,6 +73,15 @@ export async function getEmergencies(status) {
   }
 
   const { data, error } = await query;
+  // #region agent log
+  try {
+    const totalUnits = Array.isArray(data)
+      ? data.reduce((n, e) => n + (Array.isArray(e.dispatched_units) ? e.dispatched_units.length : 0), 0)
+      : 0;
+    const hasUnitsField = Array.isArray(data) && data.length > 0 && Object.prototype.hasOwnProperty.call(data[0], 'dispatched_units');
+    fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HU1', location: 'server/services/supabase.js:getEmergencies', message: 'getEmergencies result', data: { error: error?.message ?? null, emergencyCount: Array.isArray(data) ? data.length : null, hasUnitsField, totalUnits, sampleUnits: Array.isArray(data) && data[0] ? data[0].dispatched_units : null }, timestamp: Date.now() }) }).catch(() => {});
+  } catch { /* noop */ }
+  // #endregion
   if (error) throw new Error(`Fetch emergencies failed: ${error.message}`);
   return data;
 }
@@ -165,39 +161,18 @@ export async function createDispatchLog(data) {
   return record;
 }
 
-// ─── Volunteer management (dispatcher) ───────────────────────
-
 /**
- * List all volunteer profiles. Uses the admin client so dispatchers can see
- * every volunteer regardless of the requesting context.
+ * Fetch recent dispatch log entries (most recent first).
+ * Embeds basic emergency context (category, severity) for display.
  */
-export async function getVolunteers() {
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, created_at, email, role, status')
-    .eq('role', 'volunteer')
-    .order('created_at', { ascending: false });
+export async function getDispatchLog(limit = 50) {
+  const { data, error } = await supabase
+    .from('dispatch_log')
+    .select('id, created_at, emergency_id, action, details, performed_by, emergencies(category, severity)')
+    .order('created_at', { ascending: false })
+    .limit(limit);
 
-  if (error) throw new Error(`Fetch volunteers failed: ${error.message}`);
+  if (error) throw new Error(`Fetch dispatch log failed: ${error.message}`);
   return data;
 }
 
-/**
- * Update a volunteer profile (status toggle, role change).
- * Restricted to safe, known fields.
- */
-export async function updateVolunteer(id, data) {
-  const allowed = {};
-  if (data.status) allowed.status = data.status;
-  if (data.role) allowed.role = data.role;
-
-  const { data: record, error } = await supabaseAdmin
-    .from('profiles')
-    .update(allowed)
-    .eq('id', id)
-    .select('id, created_at, email, role, status')
-    .single();
-
-  if (error) throw new Error(`Update volunteer failed: ${error.message}`);
-  return record;
-}

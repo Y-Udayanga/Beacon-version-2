@@ -11,8 +11,9 @@ import {
   Loader2,
   Search,
 } from 'lucide-react'
-import { api, type Volunteer } from '@/lib/api'
+import { type Volunteer } from '@/lib/api'
 import { useAuth } from '@/lib/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { cn, timeAgo } from '@/lib/utils'
 
 export default function ManageVolunteers() {
@@ -26,8 +27,15 @@ export default function ManageVolunteers() {
 
   const load = useCallback(async () => {
     try {
-      const data = await api.getVolunteers()
-      setVolunteers(data)
+      // Query directly with the dispatcher's session so RLS (is_dispatcher())
+      // authorizes reading every volunteer profile — no service-role key needed.
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, created_at, email, role, status')
+        .eq('role', 'volunteer')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setVolunteers((data as Volunteer[]) ?? [])
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load volunteers')
@@ -44,7 +52,11 @@ export default function ManageVolunteers() {
     const nextStatus = v.status === 'active' ? 'suspended' : 'active'
     setUpdatingId(v.id)
     try {
-      await api.updateVolunteer(v.id, { status: nextStatus })
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: nextStatus })
+        .eq('id', v.id)
+      if (error) throw error
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed')

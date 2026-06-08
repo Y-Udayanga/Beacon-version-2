@@ -135,7 +135,7 @@ export default function VolunteerView() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen overflow-hidden bg-background flex flex-col">
       <header className="flex-shrink-0 border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -188,7 +188,7 @@ export default function VolunteerView() {
         </p>
       </div>
 
-      <main className="flex-1 overflow-hidden px-6 py-4">
+      <main className="flex-1 min-h-0 overflow-hidden px-6 py-4">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <motion.div

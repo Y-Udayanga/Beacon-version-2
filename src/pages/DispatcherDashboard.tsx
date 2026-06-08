@@ -5,7 +5,7 @@ import { ArrowLeft, Radio, Bell, Clock, Search, Filter, UserSearch, Map as MapIc
 import { useEmergencies } from '@/hooks/useEmergencies'
 import { useAuth } from '@/lib/AuthContext'
 import type { Emergency } from '@/lib/api'
-import { cn, timeAgo } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import StatsBar from '@/components/dispatcher/StatsBar'
 import TicketCard from '@/components/dispatcher/TicketCard'
 import TicketDetailPanel from '@/components/dispatcher/TicketDetailPanel'
@@ -58,7 +58,8 @@ export default function DispatcherDashboard() {
   const { emergencies, grouped, loading, refetch } = useEmergencies()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [selectedEmergency, setSelectedEmergency] = useState<Emergency | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedEmergency = emergencies.find(e => e.id === selectedId) ?? null
   const [showActivity, setShowActivity] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'kanban' | 'map'>('kanban')
@@ -257,7 +258,7 @@ export default function DispatcherDashboard() {
           ) : viewMode === 'map' ? (
             <MapView
               emergencies={searchQuery ? [...filteredColumns.flatMap(c => c.data)] : emergencies}
-              onCardClick={setSelectedEmergency}
+              onCardClick={e => setSelectedId(e.id)}
             />
           ) : (
             <div className="flex gap-4 h-full overflow-x-auto scrollbar-hide pb-2">
@@ -268,7 +269,7 @@ export default function DispatcherDashboard() {
                   status={col.status}
                   color={col.color}
                   emergencies={col.data}
-                  onCardClick={setSelectedEmergency}
+                  onCardClick={e => setSelectedId(e.id)}
                 />
               ))}
             </div>
@@ -285,7 +286,7 @@ export default function DispatcherDashboard() {
               transition={{ duration: 0.3 }}
               className="flex-shrink-0 border-l border-border overflow-hidden"
             >
-              <ActivityFeed emergencies={emergencies} />
+              <ActivityFeed />
             </motion.aside>
           )}
         </AnimatePresence>
@@ -300,13 +301,13 @@ export default function DispatcherDashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedEmergency(null)}
+              onClick={() => setSelectedId(null)}
               className="fixed inset-0 bg-black/50 z-40"
             />
             {/* Panel */}
             <TicketDetailPanel
               emergency={selectedEmergency}
-              onClose={() => setSelectedEmergency(null)}
+              onClose={() => setSelectedId(null)}
               onUpdate={handleUpdate}
             />
           </>

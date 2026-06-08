@@ -41,6 +41,10 @@ const dispatchUnits = [
   { type: 'search_rescue', label: 'Search & Rescue', icon: <LifeBuoy size={16} /> },
 ]
 
+const unitLabels: Record<string, string> = Object.fromEntries(
+  dispatchUnits.map(u => [u.type, u.label])
+)
+
 const statusOptions = [
   { value: 'triaging', label: 'Triaging', color: 'bg-status-triaging' },
   { value: 'dispatched', label: 'Dispatched', color: 'bg-status-dispatched' },
@@ -56,6 +60,8 @@ export default function TicketDetailPanel({
   const [updatingStatus, setUpdatingStatus] = useState(false)
 
   const icon = categoryIcons[emergency.category] || categoryIcons.other
+
+  const deployedUnits = emergency.dispatched_units ?? []
 
   const threat = emergency.threat_assessment as Record<string, unknown> | null
 
@@ -192,36 +198,21 @@ export default function TicketDetailPanel({
         )}
 
         {/* Threat Assessment */}
-        {threat && (threatsDetected.length > 0 || Object.keys(threat).length > 0) && (
+        {threatsDetected.length > 0 && (
           <div>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Threat Assessment
             </h3>
-            {threatsDetected.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {threatsDetected.map((t, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-1 rounded text-[11px] bg-destructive/15 text-destructive border border-destructive/20"
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
-            {threat.risk_level != null && (
-              <p className="text-sm text-muted-foreground">
-                Risk Level:{' '}
-                <span className="text-foreground font-medium capitalize">
-                  {String(threat.risk_level)}
+            <div className="flex flex-wrap gap-1.5">
+              {threatsDetected.map((t, i) => (
+                <span
+                  key={i}
+                  className="px-2 py-1 rounded text-[11px] bg-destructive/15 text-destructive border border-destructive/20"
+                >
+                  {t}
                 </span>
-              </p>
-            )}
-            {threat.summary != null && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {String(threat.summary)}
-              </p>
-            )}
+              ))}
+            </div>
           </div>
         )}
 
@@ -284,6 +275,38 @@ export default function TicketDetailPanel({
             ))}
           </div>
         </div>
+
+        {/* Deployed Units */}
+        {deployedUnits.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Deployed Units
+            </h3>
+            <ul className="space-y-2">
+              {deployedUnits.map(unit => (
+                <li
+                  key={unit.id}
+                  className="flex items-center gap-3 rounded-lg bg-blue-500/10 border border-blue-500/20 px-3 py-2.5"
+                >
+                  <Truck size={16} className="text-blue-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground capitalize">
+                      {unitLabels[unit.unit_type] || unit.unit_type.replace('_', ' ')}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {(unit.status || 'dispatched').replace('_', ' ')}
+                    </p>
+                  </div>
+                  {unit.eta_minutes != null && (
+                    <span className="text-xs font-medium text-blue-400 whitespace-nowrap">
+                      ETA {unit.eta_minutes} min
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Status Update */}
         <div>

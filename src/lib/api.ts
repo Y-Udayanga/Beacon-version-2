@@ -81,6 +81,13 @@ export interface Emergency {
   reporter_phone: string
   reporter_language: string
   tags: Record<string, unknown>
+  dispatched_units?: Array<{
+    id: string
+    unit_type: string
+    status: string
+    eta_minutes: number | null
+    created_at?: string
+  }>
 }
 
 export interface MissingPersonReport {
@@ -130,6 +137,19 @@ export interface Volunteer {
   status: string
 }
 
+export interface DispatchLogEntry {
+  id: string
+  created_at: string
+  emergency_id: string
+  action: string
+  performed_by: string
+  details?: Record<string, unknown>
+  emergencies?: {
+    category: string
+    severity: number
+  } | null
+}
+
 export const api = {
   async submitEmergency(report: EmergencyReport): Promise<TriageResult> {
     const formData = new FormData()
@@ -171,6 +191,10 @@ export const api = {
     })
   },
 
+  async getActivityLog(): Promise<DispatchLogEntry[]> {
+    return request('/emergencies/activity')
+  },
+
   async getMissingPersons(status?: string): Promise<MissingPerson[]> {
     const params = status ? `?status=${status}` : ''
     return request(`/missing-person${params}`)
@@ -178,18 +202,6 @@ export const api = {
 
   async updateMissingPerson(id: string, data: Partial<MissingPerson>): Promise<MissingPerson> {
     return request(`/missing-person/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-  },
-
-  async getVolunteers(): Promise<Volunteer[]> {
-    return request('/volunteers')
-  },
-
-  async updateVolunteer(id: string, data: Partial<Volunteer>): Promise<Volunteer> {
-    return request(`/volunteers/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
