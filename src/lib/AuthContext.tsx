@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { supabase } from './supabase'
+import { supabase, isSupabaseConfigured } from './supabase'
 
 export type UserRole = 'dispatcher' | 'volunteer'
 export type UserStatus = 'active' | 'suspended'
@@ -46,17 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Profile row may not exist yet immediately after signup, or RLS/network
         // failed. Default to volunteer/active so the user isn't hard-locked out.
         console.warn('[auth] Could not load profile, defaulting to volunteer:', error.message)
-        // #region agent log
-        fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HD', location: 'src/lib/AuthContext.tsx:fetchProfile', message: 'profile fetch ERROR -> defaulting volunteer', data: { userId, error: error.message }, timestamp: Date.now() }) }).catch(() => {})
-        // #endregion
         setRole('volunteer')
         setStatus('active')
         return
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HB/HD', location: 'src/lib/AuthContext.tsx:fetchProfile', message: 'profile fetch OK', data: { userId, role: data?.role ?? null, status: data?.status ?? null }, timestamp: Date.now() }) }).catch(() => {})
-      // #endregion
       setRole((data?.role as UserRole) ?? 'volunteer')
       setStatus((data?.status as UserStatus) ?? 'active')
     } catch (err) {
@@ -96,6 +90,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe()
   }, [applySession])
+
+  // Re-fetch profile periodically and listen for suspension/role changes via Realtime
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured) return
+
+    const profileChannel = supabase
+      .channel(`profile-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          const next = payload.new as { role?: UserRole; status?: UserStatus }
+          if (next.role) setRole(next.role)
+          if (next.status) setStatus(next.status)
+        }
+      )
+      .subscribe()
+
+    const interval = setInterval(() => {
+      fetchProfile(user.id)
+    }, 30_000)
+
+    return () => {
+      supabase.removeChannel(profileChannel)
+      clearInterval(interval)
+    }
+  }, [user, fetchProfile])
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()

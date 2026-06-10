@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/AuthContext'
 import type { Emergency } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import StatsBar from '@/components/dispatcher/StatsBar'
+import ApiErrorBanner from '@/components/shared/ApiErrorBanner'
 import TicketCard from '@/components/dispatcher/TicketCard'
 import TicketDetailPanel from '@/components/dispatcher/TicketDetailPanel'
 import ActivityFeed from '@/components/dispatcher/ActivityFeed'
@@ -55,7 +56,7 @@ function KanbanColumn({ title, color, emergencies, onCardClick }: KanbanColumnPr
 }
 
 export default function DispatcherDashboard() {
-  const { emergencies, grouped, loading, refetch } = useEmergencies()
+  const { emergencies, grouped, loading, error, realtimeConnected, refetch } = useEmergencies()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -142,11 +143,17 @@ export default function DispatcherDashboard() {
             {/* Live indicator */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                <span className={cn(
+                  'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75',
+                  realtimeConnected ? 'bg-green-400' : 'bg-amber-400'
+                )} />
+                <span className={cn(
+                  'relative inline-flex rounded-full h-2.5 w-2.5',
+                  realtimeConnected ? 'bg-green-500' : 'bg-amber-500'
+                )} />
               </span>
               <Radio size={14} />
-              Live
+              {realtimeConnected ? 'Live' : 'Polling'}
             </div>
 
             {/* Role badge + sign out */}
@@ -168,6 +175,12 @@ export default function DispatcherDashboard() {
           </div>
         </div>
       </header>
+
+      {error && (
+        <div className="flex-shrink-0 px-6 pt-4">
+          <ApiErrorBanner error={error} onRetry={refetch} />
+        </div>
+      )}
 
       {/* Stats Bar */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-border/50">

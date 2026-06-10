@@ -27,7 +27,6 @@ router.post('/', async (req, res, next) => {
     // Create dispatched unit record (non-fatal — return synthetic data on failure)
     let unit = null;
     const unitId = uuidv4();
-    let unitInsertError = null;
     try {
       unit = await createDispatchedUnit({
         id: unitId,
@@ -37,13 +36,9 @@ router.post('/', async (req, res, next) => {
         eta_minutes: eta,
       });
     } catch (err) {
-      unitInsertError = err.message;
       console.error('[dispatch] createDispatchedUnit failed (non-fatal):', err.message);
       unit = { id: unitId, emergency_id, unit_type, status: 'dispatched', eta_minutes: eta };
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HU2', location: 'server/routes/dispatch.js:POST', message: 'createDispatchedUnit attempt', data: { emergency_id, unit_type, persisted: unitInsertError === null, insertError: unitInsertError, returnedUnitId: unit?.id ?? null }, timestamp: Date.now() }) }).catch(() => {});
-    // #endregion
 
     // Log the dispatch action (non-fatal)
     try {

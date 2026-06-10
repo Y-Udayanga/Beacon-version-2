@@ -25,38 +25,23 @@ export default function Login() {
   /** Resolve where to go after a successful sign-in based on role. */
   async function redirectByRole(userId: string) {
     let role: string = 'volunteer'
-    let rawRole: string | null = null
-    let fetchError: string | null = null
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('role, status')
         .eq('id', userId)
         .single()
-      rawRole = (data?.role as string) ?? null
-      fetchError = error?.message ?? null
       if (data?.status === 'suspended') {
         await supabase.auth.signOut()
-        setError('Your volunteer account has been suspended. Contact a dispatcher.')
+        setError('Your account has been suspended. Contact a dispatcher.')
         return
       }
       if (data?.role) role = data.role
-    } catch (err) {
-      fetchError = err instanceof Error ? err.message : String(err)
+    } catch {
       // Default to volunteer home if the profile lookup fails.
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HA', location: 'src/pages/Login.tsx:redirectByRole:fetch', message: 'profile fetch for redirect', data: { userId, rawRole, fetchError, resolvedRole: role }, timestamp: Date.now() }) }).catch(() => {})
-    // #endregion
 
-    const fallback = role === 'dispatcher' ? '/dispatcher' : '/volunteer'
-    // Always route to the role's home. Honoring `state.from` is unsafe across
-    // sessions: a stale value (e.g. `/volunteer` left from a prior login that
-    // got bounced to /login) would strand a dispatcher on the volunteer view.
-    const dest = fallback
-    // #region agent log
-    fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HA/HC', location: 'src/pages/Login.tsx:redirectByRole', message: 'redirect decision', data: { userId, resolvedRole: role, fromPathname: state.from?.pathname ?? null, fallback, dest }, timestamp: Date.now() }) }).catch(() => {})
-    // #endregion
+    const dest = role === 'dispatcher' ? '/dispatcher' : '/volunteer'
     navigate(dest, { replace: true })
   }
 

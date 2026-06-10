@@ -68,8 +68,7 @@ router.patch('/:id', async (req, res, next) => {
     res.json(updated);
   } catch (err) {
     console.error('[emergencies] Update failed:', err.message);
-    // Return the requested data back so the UI can update optimistically
-    res.json({ id: req.params.id, ...req.body });
+    next(err);
   }
 });
 

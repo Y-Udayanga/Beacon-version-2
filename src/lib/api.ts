@@ -241,4 +241,19 @@ export const api = {
       body: JSON.stringify({ emergency_id: emergencyId, unit_type: unitType }),
     })
   },
+
+  async retriageEmergency(
+    id: string,
+    data?: { description?: string; location_lat?: number; location_lng?: number }
+  ): Promise<TriageResult> {
+    return request(
+      `/emergency/${id}/triage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data ?? {}),
+      },
+      60_000
+    )
+  },
 }

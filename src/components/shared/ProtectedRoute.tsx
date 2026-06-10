@@ -36,17 +36,10 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ suspended: true }} replace />
   }
 
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
-    // Logged in but wrong role — send to their natural home.
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
     const home = role === 'dispatcher' ? '/dispatcher' : '/volunteer'
-    // #region agent log
-    fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HB', location: 'src/components/shared/ProtectedRoute.tsx', message: 'ROLE MISMATCH redirect', data: { path: location.pathname, role, allowedRoles, redirectingTo: home, loading, hasUser: !!user }, timestamp: Date.now() }) }).catch(() => {})
-    // #endregion
     return <Navigate to={home} replace />
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HB', location: 'src/components/shared/ProtectedRoute.tsx', message: 'access granted', data: { path: location.pathname, role, allowedRoles, loading, hasUser: !!user }, timestamp: Date.now() }) }).catch(() => {})
-  // #endregion
   return <Outlet />
 }

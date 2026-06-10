@@ -50,6 +50,12 @@ export default function ManageVolunteers() {
 
   async function toggleStatus(v: Volunteer) {
     const nextStatus = v.status === 'active' ? 'suspended' : 'active'
+    if (nextStatus === 'suspended') {
+      const confirmed = window.confirm(
+        `Suspend ${v.email || 'this volunteer'}? They will be signed out and blocked from signing in.`
+      )
+      if (!confirmed) return
+    }
     setUpdatingId(v.id)
     try {
       const { error } = await supabase

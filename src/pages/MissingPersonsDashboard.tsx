@@ -106,25 +106,43 @@ function MissingPersonCard({
 
         {canManage && (
           <div className="flex gap-2 pt-1 border-t border-border/50 mt-1">
-            {person.status !== 'found' && (
-              <button
-                onClick={() => onStatusChange(person.id, 'found')}
-                disabled={updating}
-                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 transition-colors disabled:opacity-50"
-              >
-                <Check className="w-3.5 h-3.5" /> Found
-              </button>
+            {person.status === 'active' && (
+              <>
+                <button
+                  onClick={() => onStatusChange(person.id, 'found')}
+                  disabled={updating}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                >
+                  <Check className="w-3.5 h-3.5" /> Found
+                </button>
+                <button
+                  onClick={() => onStatusChange(person.id, 'closed')}
+                  disabled={updating}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-muted text-muted-foreground border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+                >
+                  <CircleSlash className="w-3.5 h-3.5" /> Close
+                </button>
+              </>
             )}
-            {person.status !== 'closed' && (
-              <button
-                onClick={() => onStatusChange(person.id, 'closed')}
-                disabled={updating}
-                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-muted text-muted-foreground border border-border hover:bg-secondary transition-colors disabled:opacity-50"
-              >
-                <CircleSlash className="w-3.5 h-3.5" /> Close
-              </button>
+            {person.status === 'found' && (
+              <>
+                <button
+                  onClick={() => onStatusChange(person.id, 'closed')}
+                  disabled={updating}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-muted text-muted-foreground border border-border hover:bg-secondary transition-colors disabled:opacity-50"
+                >
+                  <CircleSlash className="w-3.5 h-3.5" /> Close
+                </button>
+                <button
+                  onClick={() => onStatusChange(person.id, 'active')}
+                  disabled={updating}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Reopen
+                </button>
+              </>
             )}
-            {person.status !== 'active' && (
+            {person.status === 'closed' && (
               <button
                 onClick={() => onStatusChange(person.id, 'active')}
                 disabled={updating}

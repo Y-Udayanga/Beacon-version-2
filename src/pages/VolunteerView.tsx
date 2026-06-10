@@ -17,6 +17,7 @@ import type { Emergency } from '@/lib/api'
 import { cn, severityColor, severityLabel, timeAgo, googleMapsUrl } from '@/lib/utils'
 import MapView from '@/components/dispatcher/MapView'
 import StatsBar from '@/components/dispatcher/StatsBar'
+import ApiErrorBanner from '@/components/shared/ApiErrorBanner'
 
 function ReadOnlyDetail({ emergency, onClose }: { emergency: Emergency; onClose: () => void }) {
   const threat = emergency.threat_assessment as Record<string, unknown> | null
@@ -124,7 +125,8 @@ function ReadOnlyDetail({ emergency, onClose }: { emergency: Emergency; onClose:
 }
 
 export default function VolunteerView() {
-  const { emergencies, loading } = useEmergencies()
+  const { emergencies, loading, error, realtimeConnected, refetch } = useEmergencies()
+  const activeEmergencies = emergencies.filter(e => e.status !== 'resolved')
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [selected, setSelected] = useState<Emergency | null>(null)
@@ -151,11 +153,17 @@ export default function VolunteerView() {
             </span>
             <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                <span className={cn(
+                  'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75',
+                  realtimeConnected ? 'bg-green-400' : 'bg-amber-400'
+                )} />
+                <span className={cn(
+                  'relative inline-flex rounded-full h-2.5 w-2.5',
+                  realtimeConnected ? 'bg-green-500' : 'bg-amber-500'
+                )} />
               </span>
               <Radio size={14} />
-              Live
+              {realtimeConnected ? 'Live' : 'Polling'}
             </div>
             <Link
               to="/missing-dashboard"
@@ -177,8 +185,14 @@ export default function VolunteerView() {
         </div>
       </header>
 
+      {error && (
+        <div className="flex-shrink-0 px-6 pt-4">
+          <ApiErrorBanner error={error} onRetry={refetch} />
+        </div>
+      )}
+
       <div className="flex-shrink-0 px-6 py-4 border-b border-border/50">
-        <StatsBar emergencies={emergencies} />
+        <StatsBar emergencies={activeEmergencies} />
       </div>
 
       <div className="px-6 py-3 border-b border-border/30">
@@ -198,7 +212,7 @@ export default function VolunteerView() {
             />
           </div>
         ) : (
-          <MapView emergencies={emergencies} onCardClick={setSelected} />
+          <MapView emergencies={activeEmergencies} onCardClick={setSelected} />
         )}
       </main>
 

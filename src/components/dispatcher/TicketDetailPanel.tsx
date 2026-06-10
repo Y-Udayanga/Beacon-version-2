@@ -15,6 +15,8 @@ import {
   Truck,
   LifeBuoy,
   ExternalLink,
+  RefreshCw,
+  Sparkles,
 } from 'lucide-react'
 import type { Emergency } from '@/lib/api'
 import { api } from '@/lib/api'
@@ -58,6 +60,8 @@ export default function TicketDetailPanel({
 }: TicketDetailPanelProps) {
   const [dispatching, setDispatching] = useState<string | null>(null)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [retriaging, setRetriaging] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const icon = categoryIcons[emergency.category] || categoryIcons.other
 
@@ -81,11 +85,12 @@ export default function TicketDetailPanel({
 
   async function handleDispatch(unitType: string) {
     setDispatching(unitType)
+    setActionError(null)
     try {
       await api.dispatch(emergency.id, unitType)
       onUpdate()
-    } catch {
-      // silently handle
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to dispatch unit')
     } finally {
       setDispatching(null)
     }
@@ -93,13 +98,31 @@ export default function TicketDetailPanel({
 
   async function handleStatusChange(status: string) {
     setUpdatingStatus(true)
+    setActionError(null)
     try {
       await api.updateEmergency(emergency.id, { status } as Partial<Emergency>)
       onUpdate()
-    } catch {
-      // silently handle
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to update status')
     } finally {
       setUpdatingStatus(false)
+    }
+  }
+
+  async function handleRetriage() {
+    setRetriaging(true)
+    setActionError(null)
+    try {
+      await api.retriageEmergency(emergency.id, {
+        description: emergency.description,
+        location_lat: emergency.location_lat,
+        location_lng: emergency.location_lng,
+      })
+      onUpdate()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Re-triage failed')
+    } finally {
+      setRetriaging(false)
     }
   }
 
@@ -112,6 +135,12 @@ export default function TicketDetailPanel({
       className="fixed top-0 right-0 h-full w-full max-w-lg bg-card border-l border-border z-50 overflow-y-auto shadow-2xl"
     >
       <div className="p-6 space-y-6">
+        {actionError && (
+          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+            {actionError}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
@@ -176,12 +205,52 @@ export default function TicketDetailPanel({
         {/* Description */}
         {emergency.description && (
           <div>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Description
-            </h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Description
+              </h3>
+              <button
+                onClick={handleRetriage}
+                disabled={retriaging}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium',
+                  'bg-primary/10 text-primary border border-primary/30',
+                  'hover:bg-primary/20 transition-colors disabled:opacity-50'
+                )}
+              >
+                {retriaging ? (
+                  <RefreshCw size={12} className="animate-spin" />
+                ) : (
+                  <Sparkles size={12} />
+                )}
+                {retriaging ? 'Re-analyzing…' : 'Re-run AI Triage'}
+              </button>
+            </div>
             <p className="text-sm text-foreground/90 leading-relaxed">
               {emergency.description}
             </p>
+          </div>
+        )}
+
+        {/* AI Re-triage (when no description block above) */}
+        {!emergency.description && (
+          <div>
+            <button
+              onClick={handleRetriage}
+              disabled={retriaging}
+              className={cn(
+                'flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-medium',
+                'bg-primary/10 text-primary border border-primary/30',
+                'hover:bg-primary/20 transition-colors disabled:opacity-50'
+              )}
+            >
+              {retriaging ? (
+                <RefreshCw size={16} className="animate-spin" />
+              ) : (
+                <Sparkles size={16} />
+              )}
+              {retriaging ? 'Re-analyzing…' : 'Re-run AI Triage'}
+            </button>
           </div>
         )}
 

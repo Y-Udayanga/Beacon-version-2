@@ -73,15 +73,6 @@ export async function getEmergencies(status) {
   }
 
   const { data, error } = await query;
-  // #region agent log
-  try {
-    const totalUnits = Array.isArray(data)
-      ? data.reduce((n, e) => n + (Array.isArray(e.dispatched_units) ? e.dispatched_units.length : 0), 0)
-      : 0;
-    const hasUnitsField = Array.isArray(data) && data.length > 0 && Object.prototype.hasOwnProperty.call(data[0], 'dispatched_units');
-    fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HU1', location: 'server/services/supabase.js:getEmergencies', message: 'getEmergencies result', data: { error: error?.message ?? null, emergencyCount: Array.isArray(data) ? data.length : null, hasUnitsField, totalUnits, sampleUnits: Array.isArray(data) && data[0] ? data[0].dispatched_units : null }, timestamp: Date.now() }) }).catch(() => {});
-  } catch { /* noop */ }
-  // #endregion
   if (error) throw new Error(`Fetch emergencies failed: ${error.message}`);
   return data;
 }

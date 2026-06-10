@@ -70,18 +70,6 @@ export default function StatsBar({ emergencies }: StatsBarProps) {
 
   const unitsDeployed = emergencies.reduce((count, e) => count + (e.dispatched_units?.length ?? 0), 0)
 
-  // #region agent log
-  {
-    const withUnitsField = emergencies.filter(e => 'dispatched_units' in e).length
-    const sig = `${emergencies.length}|${withUnitsField}|${unitsDeployed}`
-    const w = window as unknown as { __statsbarSig?: string }
-    if (w.__statsbarSig !== sig) {
-      w.__statsbarSig = sig
-      fetch('http://127.0.0.1:7257/ingest/dafa2daa-a3c8-4b7b-8a30-6700e4bf18fe', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '610997' }, body: JSON.stringify({ sessionId: '610997', hypothesisId: 'HU3', location: 'src/components/dispatcher/StatsBar.tsx', message: 'StatsBar units computed', data: { emergencyCount: emergencies.length, withUnitsField, withUnitsNonEmpty: emergencies.filter(e => (e.dispatched_units?.length ?? 0) > 0).length, unitsDeployed, sample: emergencies[0] ? { id: emergencies[0].id, dispatched_units: emergencies[0].dispatched_units } : null }, timestamp: Date.now() }) }).catch(() => {})
-    }
-  }
-  // #endregion
-
   const totalEmergencies = emergencies.length
   const resolvedCount = emergencies.filter(e => e.status === 'resolved').length
   const responseRate =
