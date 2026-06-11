@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Radio, Bell, Clock, Search, Filter, UserSearch } from 'lucide-react'
+import { ArrowLeft, Radio, Bell, Clock, Search, Filter, UserSearch, Map as MapIcon, LayoutPanelLeft, Users, LogOut } from 'lucide-react'
 import { useEmergencies } from '@/hooks/useEmergencies'
+import { useAuth } from '@/lib/AuthContext'
 import type { Emergency } from '@/lib/api'
-import { cn, timeAgo } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import StatsBar from '@/components/dispatcher/StatsBar'
+import ApiErrorBanner from '@/components/shared/ApiErrorBanner'
 import TicketCard from '@/components/dispatcher/TicketCard'
 import TicketDetailPanel from '@/components/dispatcher/TicketDetailPanel'
 import ActivityFeed from '@/components/dispatcher/ActivityFeed'
+import MapView from '@/components/dispatcher/MapView'
 
 interface KanbanColumnProps {
   title: string
@@ -53,11 +56,20 @@ function KanbanColumn({ title, color, emergencies, onCardClick }: KanbanColumnPr
 }
 
 export default function DispatcherDashboard() {
-  const { emergencies, grouped, loading, refetch } = useEmergencies()
-  const [selectedEmergency, setSelectedEmergency] = useState<Emergency | null>(null)
+  const { emergencies, grouped, loading, error, realtimeConnected, refetch } = useEmergencies()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedEmergency = emergencies.find(e => e.id === selectedId) ?? null
   const [showActivity, setShowActivity] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [viewMode, setViewMode] = useState<'kanban' | 'map'>('kanban')
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/login', { replace: true })
+  }
 
   // Update clock every second
   useEffect(() => {
@@ -131,15 +143,44 @@ export default function DispatcherDashboard() {
             {/* Live indicator */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                <span className={cn(
+                  'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75',
+                  realtimeConnected ? 'bg-green-400' : 'bg-amber-400'
+                )} />
+                <span className={cn(
+                  'relative inline-flex rounded-full h-2.5 w-2.5',
+                  realtimeConnected ? 'bg-green-500' : 'bg-amber-500'
+                )} />
               </span>
               <Radio size={14} />
-              Live
+              {realtimeConnected ? 'Live' : 'Polling'}
             </div>
+
+            {/* Role badge + sign out */}
+            {user && (
+              <>
+                <span className="hidden lg:inline-flex px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] font-medium">
+                  Dispatcher
+                </span>
+                <button
+                  onClick={handleSignOut}
+                  title="Sign out"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted border border-border text-muted-foreground text-xs hover:text-foreground transition-colors"
+                >
+                  <LogOut size={14} />
+                  <span className="hidden sm:inline">Sign out</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
+
+      {error && (
+        <div className="flex-shrink-0 px-6 pt-4">
+          <ApiErrorBanner error={error} onRetry={refetch} />
+        </div>
+      )}
 
       {/* Stats Bar */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-border/50">
@@ -160,6 +201,30 @@ export default function DispatcherDashboard() {
           />
         </div>
 
+        {/* View Toggle */}
+        <div className="flex bg-muted rounded-lg p-1 border border-border">
+          <button
+            onClick={() => setViewMode('kanban')}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+              viewMode === 'kanban' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <LayoutPanelLeft size={14} />
+            Kanban
+          </button>
+          <button
+            onClick={() => setViewMode('map')}
+            className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+              viewMode === 'map' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <MapIcon size={14} />
+            Map
+          </button>
+        </div>
+
         {/* Action buttons */}
         <button
           onClick={() => setShowActivity(!showActivity)}
@@ -175,11 +240,19 @@ export default function DispatcherDashboard() {
         </button>
 
         <Link
-          to="/missing"
+          to="/missing-dashboard"
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm hover:bg-amber-500/20 transition-all"
         >
           <UserSearch size={14} />
           Missing Persons
+        </Link>
+
+        <Link
+          to="/volunteers"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-muted-foreground text-sm hover:text-foreground transition-all"
+        >
+          <Users size={14} />
+          Volunteers
         </Link>
       </div>
 
@@ -195,6 +268,11 @@ export default function DispatcherDashboard() {
                 className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
               />
             </div>
+          ) : viewMode === 'map' ? (
+            <MapView
+              emergencies={searchQuery ? [...filteredColumns.flatMap(c => c.data)] : emergencies}
+              onCardClick={e => setSelectedId(e.id)}
+            />
           ) : (
             <div className="flex gap-4 h-full overflow-x-auto scrollbar-hide pb-2">
               {filteredColumns.map(col => (
@@ -204,7 +282,7 @@ export default function DispatcherDashboard() {
                   status={col.status}
                   color={col.color}
                   emergencies={col.data}
-                  onCardClick={setSelectedEmergency}
+                  onCardClick={e => setSelectedId(e.id)}
                 />
               ))}
             </div>
@@ -221,7 +299,7 @@ export default function DispatcherDashboard() {
               transition={{ duration: 0.3 }}
               className="flex-shrink-0 border-l border-border overflow-hidden"
             >
-              <ActivityFeed emergencies={emergencies} />
+              <ActivityFeed />
             </motion.aside>
           )}
         </AnimatePresence>
@@ -236,13 +314,13 @@ export default function DispatcherDashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedEmergency(null)}
+              onClick={() => setSelectedId(null)}
               className="fixed inset-0 bg-black/50 z-40"
             />
             {/* Panel */}
             <TicketDetailPanel
               emergency={selectedEmergency}
-              onClose={() => setSelectedEmergency(null)}
+              onClose={() => setSelectedId(null)}
               onUpdate={handleUpdate}
             />
           </>

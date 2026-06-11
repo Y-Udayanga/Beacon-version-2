@@ -68,16 +68,7 @@ export default function StatsBar({ emergencies }: StatsBarProps) {
       ? (active.reduce((sum, e) => sum + (e.severity || 0), 0) / active.length).toFixed(1)
       : '0.0'
 
-  const unitsDeployed = emergencies.reduce((count, e) => {
-    const ta = e.threat_assessment
-    if (ta && typeof ta === 'object') {
-      const dispatched = (ta as Record<string, unknown>).dispatched_units
-      if (Array.isArray(dispatched)) {
-        return count + dispatched.length
-      }
-    }
-    return count
-  }, 0)
+  const unitsDeployed = emergencies.reduce((count, e) => count + (e.dispatched_units?.length ?? 0), 0)
 
   const totalEmergencies = emergencies.length
   const resolvedCount = emergencies.filter(e => e.status === 'resolved').length

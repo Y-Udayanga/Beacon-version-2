@@ -2,9 +2,43 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { upload } from '../middleware/upload.js';
 import { extractPersonTags } from '../services/gemini.js';
-import { uploadMedia, createMissingPerson } from '../services/supabase.js';
+import {
+  uploadMedia,
+  createMissingPerson,
+  getMissingPersons,
+  updateMissingPerson,
+} from '../services/supabase.js';
 
 const router = Router();
+
+/**
+ * GET /api/missing-person
+ * List missing persons, optionally filtered by ?status=.
+ */
+router.get('/', async (req, res, next) => {
+  try {
+    const data = await getMissingPersons(req.query.status);
+    res.json(data);
+  } catch (err) {
+    console.error('[missing-person] list error:', err.message);
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/missing-person/:id
+ * Update a missing person record (e.g. status: active|found|closed).
+ */
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const record = await updateMissingPerson(id, req.body || {});
+    res.json(record);
+  } catch (err) {
+    console.error('[missing-person] update error:', err.message);
+    next(err);
+  }
+});
 
 /**
  * POST /api/missing-person

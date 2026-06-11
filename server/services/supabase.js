@@ -65,7 +65,7 @@ export async function updateEmergency(id, data) {
 export async function getEmergencies(status) {
   let query = supabase
     .from('emergencies')
-    .select('*')
+    .select('*, dispatched_units(id, unit_type, status, eta_minutes, created_at)')
     .order('created_at', { ascending: false });
 
   if (status) {
@@ -75,6 +75,39 @@ export async function getEmergencies(status) {
   const { data, error } = await query;
   if (error) throw new Error(`Fetch emergencies failed: ${error.message}`);
   return data;
+}
+
+/**
+ * Fetch missing persons, optionally filtered by status.
+ */
+export async function getMissingPersons(status) {
+  let query = supabase
+    .from('missing_persons')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(`Fetch missing persons failed: ${error.message}`);
+  return data;
+}
+
+/**
+ * Update a missing person record by id (e.g. status change).
+ */
+export async function updateMissingPerson(id, data) {
+  const { data: record, error } = await supabase
+    .from('missing_persons')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Update missing person failed: ${error.message}`);
+  return record;
 }
 
 /**
@@ -118,3 +151,19 @@ export async function createDispatchLog(data) {
   if (error) throw new Error(`Create dispatch log failed: ${error.message}`);
   return record;
 }
+
+/**
+ * Fetch recent dispatch log entries (most recent first).
+ * Embeds basic emergency context (category, severity) for display.
+ */
+export async function getDispatchLog(limit = 50) {
+  const { data, error } = await supabase
+    .from('dispatch_log')
+    .select('id, created_at, emergency_id, action, details, performed_by, emergencies(category, severity)')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(`Fetch dispatch log failed: ${error.message}`);
+  return data;
+}
+

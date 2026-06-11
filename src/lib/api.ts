@@ -81,6 +81,13 @@ export interface Emergency {
   reporter_phone: string
   reporter_language: string
   tags: Record<string, unknown>
+  dispatched_units?: Array<{
+    id: string
+    unit_type: string
+    status: string
+    eta_minutes: number | null
+    created_at?: string
+  }>
 }
 
 export interface MissingPersonReport {
@@ -103,6 +110,44 @@ export interface ExtractedTags {
   clothing: Array<{ type: string; color: string }>
   distinguishing_features: string[]
   build: string
+}
+
+export interface MissingPerson {
+  id: string
+  created_at: string
+  status: string
+  name: string
+  estimated_age: string
+  gender: string
+  description: string
+  clothing_description: string
+  last_seen_location: string
+  last_seen_time: string
+  image_url: string
+  reporter_name: string
+  reporter_contact: string
+  extracted_tags: ExtractedTags
+}
+
+export interface Volunteer {
+  id: string
+  created_at: string
+  email: string
+  role: string
+  status: string
+}
+
+export interface DispatchLogEntry {
+  id: string
+  created_at: string
+  emergency_id: string
+  action: string
+  performed_by: string
+  details?: Record<string, unknown>
+  emergencies?: {
+    category: string
+    severity: number
+  } | null
 }
 
 export const api = {
@@ -146,6 +191,23 @@ export const api = {
     })
   },
 
+  async getActivityLog(): Promise<DispatchLogEntry[]> {
+    return request('/emergencies/activity')
+  },
+
+  async getMissingPersons(status?: string): Promise<MissingPerson[]> {
+    const params = status ? `?status=${status}` : ''
+    return request(`/missing-person${params}`)
+  },
+
+  async updateMissingPerson(id: string, data: Partial<MissingPerson>): Promise<MissingPerson> {
+    return request(`/missing-person/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+  },
+
   async submitMissingPerson(report: MissingPersonReport): Promise<{ id: string; extracted_tags: ExtractedTags }> {
     const formData = new FormData()
     Object.entries(report).forEach(([key, value]) => {
@@ -178,5 +240,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ emergency_id: emergencyId, unit_type: unitType }),
     })
+  },
+
+  async retriageEmergency(
+    id: string,
+    data?: { description?: string; location_lat?: number; location_lng?: number }
+  ): Promise<TriageResult> {
+    return request(
+      `/emergency/${id}/triage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data ?? {}),
+      },
+      60_000
+    )
   },
 }

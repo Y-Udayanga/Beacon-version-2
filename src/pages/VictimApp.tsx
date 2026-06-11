@@ -17,6 +17,7 @@ import {
   RotateCcw,
   UserSearch,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useMediaCapture } from "@/hooks/useMediaCapture";
@@ -287,14 +288,23 @@ export default function VictimApp() {
               Quick Report (Text Only)
             </motion.button>
 
-            {/* Missing person link */}
-            <Link
-              to="/missing"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              <UserSearch className="w-4 h-4" />
-              Report Missing Person
-            </Link>
+            {/* Missing person links */}
+            <div className="flex items-center gap-5">
+              <Link
+                to="/missing"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                <UserSearch className="w-4 h-4" />
+                Report Missing Person
+              </Link>
+              <Link
+                to="/missing-dashboard"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                <Search className="w-4 h-4" />
+                View Missing Persons
+              </Link>
+            </div>
           </motion.div>
         )}
 

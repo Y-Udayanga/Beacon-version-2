@@ -44,7 +44,7 @@
 | AI Engine | Google Gemini 2.0 Flash |
 | Database | Supabase (PostgreSQL) |
 | Storage | Supabase Storage |
-| Realtime | Supabase Realtime |
+| Realtime | Supabase Realtime (emergencies + dispatched_units) with polling fallback |
 
 ## 🚀 Getting Started
 
@@ -63,7 +63,7 @@ npm install
 
 ### 2. Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (see `.env.example`):
 
 ```env
 VITE_SUPABASE_URL=your_supabase_url
@@ -123,7 +123,7 @@ The app will be available at `http://localhost:5173` with the API proxied to `ht
 │   │   ├── victim/         # Victim app components
 │   │   └── shared/         # Shared components
 │   ├── hooks/              # Custom React hooks
-│   │   ├── useEmergencies.ts  # Realtime emergency data
+│   │   ├── useEmergencies.ts  # Realtime + polling emergency data
 │   │   ├── useGeolocation.ts  # Browser geolocation
 │   │   └── useMediaCapture.ts # Camera + mic capture
 │   └── lib/
@@ -147,11 +147,20 @@ The app will be available at `http://localhost:5173` with the API proxied to `ht
 | POST | `/api/emergency/report` | Submit new emergency (multipart) |
 | POST | `/api/emergency/:id/triage` | Re-run AI triage |
 | GET | `/api/emergencies` | List all emergencies |
+| GET | `/api/emergencies/activity` | Recent dispatch activity log |
 | PATCH | `/api/emergencies/:id` | Update emergency |
 | POST | `/api/dispatch` | Manually dispatch unit |
+| GET | `/api/missing-person` | List missing person reports |
+| PATCH | `/api/missing-person/:id` | Update missing person status |
 | POST | `/api/missing-person` | Submit missing person report |
 | POST | `/api/missing-person/extract` | Extract tags from photo |
 | GET | `/api/health` | Health check |
+
+## Realtime Updates
+
+The dispatcher and volunteer dashboards subscribe to Supabase Realtime on the `emergencies` and `dispatched_units` tables. When Realtime is connected, updates appear instantly; if the connection drops, the app falls back to polling every 5 seconds (with a 30-second backup poll while Realtime is active).
+
+Ensure Realtime is enabled in your Supabase project and that the schema publication includes these tables (see `supabase-schema.sql`).
 
 ## 🤝 Team
 

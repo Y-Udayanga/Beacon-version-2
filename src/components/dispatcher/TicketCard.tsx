@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import type { Emergency } from '@/lib/api'
 import { cn, severityColor, timeAgo } from '@/lib/utils'
+import SLATimer from './SLATimer'
 
 interface TicketCardProps {
   emergency: Emergency
@@ -62,9 +63,13 @@ export default function TicketCard({ emergency, onClick }: TicketCardProps) {
             {emergency.category?.replace('_', ' ')}
           </span>
         </div>
-        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-          {timeAgo(emergency.created_at)}
-        </span>
+        {emergency.status === 'new' || emergency.status === 'triaging' ? (
+          <SLATimer createdAt={emergency.created_at} status={emergency.status} />
+        ) : (
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+            {timeAgo(emergency.created_at)}
+          </span>
+        )}
       </div>
 
       {emergency.description && (
