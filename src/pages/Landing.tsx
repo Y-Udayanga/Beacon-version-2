@@ -2,7 +2,6 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import {
-  Phone,
   LayoutDashboard,
   Camera,
   Brain,
@@ -11,15 +10,15 @@ import {
   HeartPulse,
   Search,
   Shield,
-  ArrowRight,
   Zap,
   Users,
   Globe,
-  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ParticleBackground from "@/components/landing/ParticleBackground";
 import AnimatedCounter from "@/components/landing/AnimatedCounter";
+import LandingNav from "@/components/landing/LandingNav";
+import LandingHero from "@/components/landing/LandingHero";
 
 /* ------------------------------------------------------------------ */
 /*  Data                                                               */
@@ -28,9 +27,9 @@ import AnimatedCounter from "@/components/landing/AnimatedCounter";
 const features = [
   {
     icon: Camera,
-    title: "Panic Snap",
+    title: "Photo & Voice Report",
     description:
-      "Instant photo and audio capture in emergency situations. One tap to document and transmit critical evidence.",
+      "Capture a photo and describe the situation out loud in one step. Your report is sent to dispatchers immediately.",
     gradient: "from-red-500/20 to-orange-500/20",
   },
   {
@@ -81,7 +80,7 @@ const howItWorks = [
   {
     step: "01",
     title: "Report Emergency",
-    description: "Tap the Panic Snap button to instantly capture photos and audio from the scene.",
+    description: "Tap Report Emergency to capture photos and audio from the scene, or describe what's happening without a camera.",
     icon: Camera,
     color: "text-red-400",
     bgColor: "bg-red-500/15",
@@ -111,26 +110,6 @@ const howItWorks = [
     bgColor: "bg-green-500/15",
   },
 ];
-
-/* ------------------------------------------------------------------ */
-/*  Animation variants                                                 */
-/* ------------------------------------------------------------------ */
-
-const containerVariants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.12 },
-  },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut" as const },
-  },
-};
 
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
@@ -323,163 +302,8 @@ export default function Landing() {
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-background">
       <ParticleBackground />
-
-      {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-24 text-center">
-        {/* radial accent behind heading */}
-        <div
-          className="pointer-events-none absolute left-1/2 top-1/3 -z-10 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20 blur-[120px]"
-          style={{
-            background:
-              "radial-gradient(circle, #6366f1 0%, transparent 70%)",
-          }}
-        />
-        {/* Second accent */}
-        <div
-          className="pointer-events-none absolute right-0 bottom-1/4 -z-10 h-[400px] w-[400px] rounded-full opacity-10 blur-[100px]"
-          style={{
-            background:
-              "radial-gradient(circle, #ec4899 0%, transparent 70%)",
-          }}
-        />
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="flex max-w-3xl flex-col items-center gap-6"
-        >
-          <motion.div variants={fadeUp} className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <span className="text-sm font-medium tracking-wide text-primary">
-              AI-Powered Emergency Platform
-            </span>
-          </motion.div>
-
-          <motion.h1
-            variants={fadeUp}
-            className="text-gradient text-5xl font-extrabold leading-tight tracking-tight md:text-7xl"
-          >
-            Crisis Copilot
-          </motion.h1>
-
-          <motion.p
-            variants={fadeUp}
-            className="max-w-xl text-lg leading-relaxed text-muted-foreground md:text-xl"
-          >
-            AI-Powered Emergency Response — Bridging communication gaps when
-            every second counts.
-          </motion.p>
-        </motion.div>
-
-        {/* ── CTA Cards ─────────────────────────────────────── */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="mt-14 grid w-full max-w-2xl grid-cols-1 gap-6 md:grid-cols-2"
-        >
-          {/* I Need Help */}
-          <motion.div variants={fadeUp}>
-            <Link to="/victim" className="block">
-              <motion.div
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className={cn(
-                  "glass group relative flex flex-col items-center gap-4 rounded-2xl p-8",
-                  "border border-red-500/20 hover:border-red-500/40",
-                  "cursor-pointer transition-shadow duration-300 hover:glow-red"
-                )}
-              >
-                {/* pulsing glow ring */}
-                <span className="absolute inset-0 -z-10 animate-pulse rounded-2xl opacity-30 blur-xl" style={{ background: "radial-gradient(circle, rgba(239,68,68,0.35), transparent 70%)" }} />
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15 text-red-400 transition-all group-hover:bg-red-500/25 group-hover:scale-110">
-                  <Phone className="h-7 w-7" />
-                </div>
-                <div className="text-center">
-                  <h2 className="text-xl font-bold text-foreground">
-                    I Need Help
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Report an emergency now
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-red-400/70 group-hover:text-red-400 transition-colors">
-                  <span>Open Victim App</span>
-                  <ArrowRight className="h-3 w-3" />
-                </div>
-              </motion.div>
-            </Link>
-          </motion.div>
-
-          {/* Dispatcher Login */}
-          <motion.div variants={fadeUp}>
-            <Link to="/dispatcher" className="block">
-              <motion.div
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.97 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className={cn(
-                  "glass group relative flex flex-col items-center gap-4 rounded-2xl p-8",
-                  "border border-primary/20 hover:border-primary/40",
-                  "cursor-pointer transition-shadow duration-300 hover:glow-blue"
-                )}
-              >
-                <span className="absolute inset-0 -z-10 animate-pulse rounded-2xl opacity-20 blur-xl" style={{ background: "radial-gradient(circle, rgba(99,102,241,0.35), transparent 70%)" }} />
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary transition-all group-hover:bg-primary/25 group-hover:scale-110">
-                  <LayoutDashboard className="h-7 w-7" />
-                </div>
-                <div className="text-center">
-                  <h2 className="text-xl font-bold text-foreground">
-                    Dispatcher Login
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Access the command center
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-primary/70 group-hover:text-primary transition-colors">
-                  <span>Open Dashboard</span>
-                  <ArrowRight className="h-3 w-3" />
-                </div>
-              </motion.div>
-            </Link>
-          </motion.div>
-        </motion.div>
-
-        {/* Missing person quick access */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2, duration: 0.5 }}
-          className="mt-8"
-        >
-          <Link
-            to="/missing"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-amber-400 transition-colors group"
-          >
-            <Users className="h-4 w-4" />
-            <span>Report a Missing Person</span>
-            <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-        </motion.div>
-
-        {/* scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 1 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-        >
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="h-10 w-6 rounded-full border-2 border-muted-foreground/30 p-1"
-          >
-            <div className="mx-auto h-2 w-1 rounded-full bg-muted-foreground/50" />
-          </motion.div>
-        </motion.div>
-      </section>
+      <LandingNav />
+      <LandingHero />
 
       {/* ── Features ─────────────────────────────────────────── */}
       <section className="relative py-20 md:py-28">
@@ -540,28 +364,30 @@ export default function Landing() {
             <p className="text-muted-foreground max-w-lg mx-auto mb-8">
               Whether you're in danger or managing emergencies, Crisis Copilot is here to help. Start using our AI-powered platform now.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col gap-4">
               <Link
                 to="/victim"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-semibold hover:from-red-600 hover:to-orange-600 transition-all shadow-lg shadow-red-500/25"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-destructive px-8 py-4 text-lg font-bold text-destructive-foreground glow-red transition-transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                <Phone className="h-5 w-5" />
+                <Camera className="h-5 w-5" />
                 Report Emergency
               </Link>
-              <Link
-                to="/dispatcher"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold hover:from-indigo-600 hover:to-violet-600 transition-all shadow-lg shadow-indigo-500/25"
-              >
-                <LayoutDashboard className="h-5 w-5" />
-                Dispatcher Dashboard
-              </Link>
-              <Link
-                to="/login"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-secondary transition-all"
-              >
-                <Users className="h-5 w-5" />
-                Volunteer / Sign In
-              </Link>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Link
+                  to="/dispatcher"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dispatcher Dashboard
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 py-3 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                >
+                  <Users className="h-4 w-4" />
+                  Volunteer / Sign In
+                </Link>
+              </div>
             </div>
           </motion.div>
         </div>
