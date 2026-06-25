@@ -65,6 +65,7 @@ export default function DispatcherDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'kanban' | 'map'>('kanban')
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [isCriticalModalOpen, setIsCriticalModalOpen] = useState(false)
 
   async function handleSignOut() {
     await signOut()
@@ -100,7 +101,8 @@ export default function DispatcherDashboard() {
     refetch()
   }
 
-  const criticalCount = emergencies.filter(e => e.severity >= 4 && e.status !== 'resolved').length
+  const criticalEmergencies = emergencies.filter(e => e.severity >= 4 && e.status !== 'resolved')
+  const criticalCount = criticalEmergencies.length
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -127,7 +129,8 @@ export default function DispatcherDashboard() {
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/15 border border-destructive/30 text-destructive text-xs font-medium"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/15 border border-destructive/30 text-destructive text-xs font-medium cursor-pointer hover:bg-destructive/25 transition-colors"
+                onClick={() => setIsCriticalModalOpen(true)}
               >
                 <Bell size={12} className="animate-pulse" />
                 {criticalCount} Critical
@@ -304,6 +307,77 @@ export default function DispatcherDashboard() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Critical Issues Modal Overlay */}
+      <AnimatePresence>
+        {isCriticalModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsCriticalModalOpen(false)}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+            >
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-destructive/5">
+                <div className="flex items-center gap-2.5 text-destructive font-semibold">
+                  <div className="p-1.5 bg-destructive/10 rounded-full">
+                    <Bell className="animate-pulse" size={16} />
+                  </div>
+                  <h2 className="text-base tracking-tight">Critical Emergencies ({criticalCount})</h2>
+                </div>
+                <button
+                  onClick={() => setIsCriticalModalOpen(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted"
+                  title="Close modal"
+                  aria-label="Close modal"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+              <div className="p-5 overflow-y-auto flex-1 space-y-3 bg-muted/10">
+                {criticalCount === 0 ? (
+                  <p className="text-center text-muted-foreground py-8 text-sm">No critical emergencies at this time.</p>
+                ) : (
+                  criticalEmergencies.map((e) => (
+                    <div key={e.id} className="bg-background rounded-lg p-4 border border-border shadow-sm flex flex-col gap-3 hover:border-border/80 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <h3 className="font-semibold text-sm text-foreground">{e.category || 'Unknown Emergency'}</h3>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-destructive/10 text-destructive border border-destructive/20 uppercase tracking-wider whitespace-nowrap">
+                          {e.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{e.description}</p>
+                      <div className="flex flex-wrap items-center gap-4 mt-1 text-xs text-muted-foreground">
+                        {e.location_address && (
+                          <span className="flex items-center gap-1.5">
+                            <MapIcon size={12} /> {e.location_address}
+                          </span>
+                        )}
+                        <button 
+                          className="text-primary hover:text-primary/80 font-medium ml-auto flex items-center gap-1 transition-colors"
+                          onClick={() => {
+                            setSelectedId(e.id);
+                            setIsCriticalModalOpen(false);
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Detail Panel Overlay */}
       <AnimatePresence>
