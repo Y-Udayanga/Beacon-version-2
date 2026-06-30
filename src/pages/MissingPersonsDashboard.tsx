@@ -36,11 +36,13 @@ function MissingPersonCard({
   canManage,
   onStatusChange,
   updating,
+  onClick,
 }: {
   person: MissingPerson
   canManage: boolean
   onStatusChange: (id: string, status: string) => void
   updating: boolean
+  onClick: () => void
 }) {
   const tags = person.extracted_tags
   return (
@@ -49,7 +51,8 @@ function MissingPersonCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col"
+      className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col cursor-pointer hover:border-primary/40 transition-colors"
+      onClick={onClick}
     >
       <div className="relative h-44 bg-muted">
         {person.image_url ? (
@@ -109,14 +112,14 @@ function MissingPersonCard({
             {person.status === 'active' && (
               <>
                 <button
-                  onClick={() => onStatusChange(person.id, 'found')}
+                  onClick={(e) => { e.stopPropagation(); onStatusChange(person.id, 'found'); }}
                   disabled={updating}
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 transition-colors disabled:opacity-50"
                 >
                   <Check className="w-3.5 h-3.5" /> Found
                 </button>
                 <button
-                  onClick={() => onStatusChange(person.id, 'closed')}
+                  onClick={(e) => { e.stopPropagation(); onStatusChange(person.id, 'closed'); }}
                   disabled={updating}
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-muted text-muted-foreground border border-border hover:bg-secondary transition-colors disabled:opacity-50"
                 >
@@ -127,14 +130,14 @@ function MissingPersonCard({
             {person.status === 'found' && (
               <>
                 <button
-                  onClick={() => onStatusChange(person.id, 'closed')}
+                  onClick={(e) => { e.stopPropagation(); onStatusChange(person.id, 'closed'); }}
                   disabled={updating}
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-muted text-muted-foreground border border-border hover:bg-secondary transition-colors disabled:opacity-50"
                 >
                   <CircleSlash className="w-3.5 h-3.5" /> Close
                 </button>
                 <button
-                  onClick={() => onStatusChange(person.id, 'active')}
+                  onClick={(e) => { e.stopPropagation(); onStatusChange(person.id, 'active'); }}
                   disabled={updating}
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
                 >
@@ -144,7 +147,7 @@ function MissingPersonCard({
             )}
             {person.status === 'closed' && (
               <button
-                onClick={() => onStatusChange(person.id, 'active')}
+                onClick={(e) => { e.stopPropagation(); onStatusChange(person.id, 'active'); }}
                 disabled={updating}
                 className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
               >
@@ -164,6 +167,7 @@ export default function MissingPersonsDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [selectedPerson, setSelectedPerson] = useState<MissingPerson | null>(null)
 
   const canManage = Boolean(user && (role === 'volunteer' || role === 'dispatcher'))
   const backTo = role === 'dispatcher' ? '/dispatcher' : role === 'volunteer' ? '/volunteer' : '/'
@@ -283,12 +287,130 @@ export default function MissingPersonsDashboard() {
                   canManage={canManage}
                   updating={updatingId === person.id}
                   onStatusChange={handleStatusChange}
+                  onClick={() => setSelectedPerson(person)}
                 />
               ))}
             </AnimatePresence>
           </div>
         )}
       </main>
+
+      {/* Details Modal */}
+      <AnimatePresence>
+        {selectedPerson && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedPerson(null)}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            >
+              <div className="relative h-48 sm:h-64 bg-black/90 flex-shrink-0">
+                {selectedPerson.image_url ? (
+                  <img src={selectedPerson.image_url} alt={selectedPerson.name} className="w-full h-full object-contain" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    <UserSearch className="w-16 h-16 opacity-50" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                
+                <button
+                  onClick={() => setSelectedPerson(null)}
+                  className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors p-1.5 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md"
+                  title="Close details"
+                  aria-label="Close details"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+
+                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white shadow-sm">{selectedPerson.name || 'Unknown'}</h2>
+                    <p className="text-white/80 text-sm font-medium">
+                      {[selectedPerson.estimated_age, selectedPerson.gender].filter(Boolean).join(' · ') || 'No age/gender details'}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      'px-3 py-1 rounded-full text-xs font-bold border capitalize shadow-sm backdrop-blur-md whitespace-nowrap',
+                      statusStyles[selectedPerson.status] || statusStyles.closed
+                    )}
+                  >
+                    {selectedPerson.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-6">
+                {selectedPerson.last_seen_location && (
+                  <div className="space-y-1.5">
+                    <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" /> Last Seen Location
+                    </h3>
+                    <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg border border-border/50">
+                      {selectedPerson.last_seen_location}
+                    </p>
+                  </div>
+                )}
+
+                {selectedPerson.description && (
+                  <div className="space-y-1.5">
+                    <h3 className="text-sm font-medium text-foreground">Description</h3>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-lg border border-border/50">
+                      {selectedPerson.description}
+                    </p>
+                  </div>
+                )}
+
+                {(selectedPerson.extracted_tags?.clothing?.length || selectedPerson.extracted_tags?.distinguishing_features?.length) ? (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-foreground">Identifiable Features</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedPerson.extracted_tags?.clothing?.map((c, i) => (
+                        <span key={`c-${i}`} className="px-2.5 py-1 rounded-md bg-pink-500/10 border border-pink-500/20 text-pink-400 text-xs font-medium">
+                          {c.color} {c.type}
+                        </span>
+                      ))}
+                      {selectedPerson.extracted_tags?.distinguishing_features?.map((f, i) => (
+                        <span key={`f-${i}`} className="px-2.5 py-1 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-medium">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border/50">
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Reported Time</p>
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      {new Date(selectedPerson.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  {(selectedPerson.reporter_name || selectedPerson.reporter_contact) && (
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">Reporter Details</p>
+                      <p className="text-sm font-medium">
+                        {selectedPerson.reporter_name || 'Anonymous'}{' '}
+                        {selectedPerson.reporter_contact ? `(${selectedPerson.reporter_contact})` : ''}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
