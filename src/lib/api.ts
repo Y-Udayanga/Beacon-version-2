@@ -1,5 +1,5 @@
-// Use the deployed Vercel URL in production, but local proxy in development
-const API_BASE = import.meta.env.PROD ? 'https://beacon-version-2.vercel.app/api' : '/api'
+// Use a relative path for both development (via Vite proxy) and production (via Vercel rewrites)
+const API_BASE = '/api'
 
 /**
  * Fetch with a timeout to prevent indefinite hangs.
